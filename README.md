@@ -14,7 +14,7 @@ Enhanced `queue:failed` command with JSON output, advanced filtering, and option
   - Partial class name matching
   - Result limiting
 
-- **QueueWatch Integration** (Optional SaaS)
+- **QueueWatch Integration** (Optional SaaS) - WIP
   - Real-time failure reporting to QueueWatch dashboard
   - Multi-app monitoring from a single dashboard
   - Slack, Discord, and PagerDuty alerts
