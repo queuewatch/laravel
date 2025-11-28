@@ -30,8 +30,13 @@ class ReportFailedJob
             return false;
         }
 
-        // Check if job is in ignored list
+        // Never report failures of the failure reporter itself (avoid infinite loops)
         $jobClass = $this->getJobClass($event);
+        if ($jobClass === SendFailureReport::class) {
+            return false;
+        }
+
+        // Check if job is in ignored list
         if (in_array($jobClass, config('queuewatch.ignored_jobs', []))) {
             return false;
         }
