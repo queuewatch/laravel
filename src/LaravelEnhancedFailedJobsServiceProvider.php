@@ -4,10 +4,12 @@ namespace Mvpopuk\LaravelEnhancedFailedJobs;
 
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Mvpopuk\LaravelEnhancedFailedJobs\Api\QueueWatchClient;
 use Mvpopuk\LaravelEnhancedFailedJobs\Commands\ListFailedCommand;
 use Mvpopuk\LaravelEnhancedFailedJobs\Commands\QueueWatchTestCommand;
+use Mvpopuk\LaravelEnhancedFailedJobs\Http\Controllers\RetryController;
 use Mvpopuk\LaravelEnhancedFailedJobs\Listeners\ReportFailedJob;
 
 class LaravelEnhancedFailedJobsServiceProvider extends ServiceProvider
@@ -26,6 +28,7 @@ class LaravelEnhancedFailedJobsServiceProvider extends ServiceProvider
         }
 
         $this->registerFailedJobListener();
+        $this->registerRetryRoute();
     }
 
     public function register(): void
@@ -55,5 +58,16 @@ class LaravelEnhancedFailedJobsServiceProvider extends ServiceProvider
         }
 
         Event::listen(JobFailed::class, ReportFailedJob::class);
+    }
+
+    protected function registerRetryRoute(): void
+    {
+        if (! config('queuewatch.retry.enabled', false)) {
+            return;
+        }
+
+        Route::post(config('queuewatch.retry.path', 'queuewatch/retry'), RetryController::class)
+            ->middleware(config('queuewatch.retry.middleware', []))
+            ->name('queuewatch.retry');
     }
 }

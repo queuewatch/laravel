@@ -151,4 +151,79 @@ return [
 
     'timeout' => env('QUEUEWATCH_TIMEOUT', 5),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Retry Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure the retry functionality that allows QueueWatch to trigger
+    | job retries remotely from the dashboard.
+    |
+    */
+
+    'retry' => [
+
+        /*
+        |--------------------------------------------------------------------------
+        | Enable Retry Endpoint
+        |--------------------------------------------------------------------------
+        |
+        | Whether to enable the retry endpoint. When enabled, QueueWatch can
+        | send retry requests to re-dispatch failed jobs.
+        |
+        */
+
+        'enabled' => env('QUEUEWATCH_RETRY_ENABLED', false),
+
+        /*
+        |--------------------------------------------------------------------------
+        | Retry Route Path
+        |--------------------------------------------------------------------------
+        |
+        | The path where the retry endpoint will be registered. The full URL
+        | will be: https://your-app.com/{path}
+        |
+        */
+
+        'path' => env('QUEUEWATCH_RETRY_PATH', 'queuewatch/retry'),
+
+        /*
+        |--------------------------------------------------------------------------
+        | Retry Route Middleware
+        |--------------------------------------------------------------------------
+        |
+        | Middleware to apply to the retry route. By default, no middleware
+        | is applied since authentication is handled via HMAC signature.
+        |
+        */
+
+        'middleware' => [],
+
+        /*
+        |--------------------------------------------------------------------------
+        | Allowed Queues
+        |--------------------------------------------------------------------------
+        |
+        | Limit which queues can be retried. Use ['*'] to allow all queues,
+        | or specify an array of queue names like ['payments', 'emails'].
+        |
+        */
+
+        'allowed_queues' => ['*'],
+
+        /*
+        |--------------------------------------------------------------------------
+        | Retry Delay
+        |--------------------------------------------------------------------------
+        |
+        | Delay in seconds before the retried job runs. Set to 0 for immediate
+        | execution. Useful when retrying jobs that failed due to external
+        | service issues.
+        |
+        */
+
+        'delay' => env('QUEUEWATCH_RETRY_DELAY', 0),
+
+    ],
+
 ];
