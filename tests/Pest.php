@@ -1,5 +1,5 @@
 <?php
 
-use Mvpopuk\LaravelEnhancedFailedJobs\Tests\TestCase;
+use Queuewatch\Laravel\Tests\TestCase;
 
 uses(TestCase::class)->in(__DIR__);

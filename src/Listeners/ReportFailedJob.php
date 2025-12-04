@@ -1,9 +1,9 @@
 <?php
 
-namespace Mvpopuk\LaravelEnhancedFailedJobs\Listeners;
+namespace Queuewatch\Laravel\Listeners;
 
 use Illuminate\Queue\Events\JobFailed;
-use Mvpopuk\LaravelEnhancedFailedJobs\Jobs\SendFailureReport;
+use Queuewatch\Laravel\Jobs\SendFailureReport;
 
 class ReportFailedJob
 {

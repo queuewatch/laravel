@@ -1,16 +1,16 @@
 <?php
 
-namespace Mvpopuk\LaravelEnhancedFailedJobs\Tests;
+namespace Queuewatch\Laravel\Tests;
 
-use Mvpopuk\LaravelEnhancedFailedJobs\LaravelEnhancedFailedJobsServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
+use Queuewatch\Laravel\QueuewatchServiceProvider;
 
 class TestCase extends Orchestra
 {
     protected function getPackageProviders($app)
     {
         return [
-            LaravelEnhancedFailedJobsServiceProvider::class,
+            QueuewatchServiceProvider::class,
         ];
     }
 

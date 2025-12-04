@@ -2,8 +2,8 @@
 
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
-use Mvpopuk\LaravelEnhancedFailedJobs\Api\QueueWatchClient;
-use Mvpopuk\LaravelEnhancedFailedJobs\Jobs\SendFailureReport;
+use Queuewatch\Laravel\Api\QueuewatchClient;
+use Queuewatch\Laravel\Jobs\SendFailureReport;
 
 beforeEach(function () {
     config()->set('queuewatch.api_key', 'test-api-key');
@@ -17,15 +17,15 @@ beforeEach(function () {
     config()->set('queuewatch.ignored_exceptions', []);
 });
 
-describe('QueueWatchClient', function () {
+describe('QueuewatchClient', function () {
     it('is configured when api key is set', function () {
-        $client = new QueueWatchClient('test-key');
+        $client = new QueuewatchClient('test-key');
 
         expect($client->isConfigured())->toBeTrue();
     });
 
     it('is not configured when api key is empty', function () {
-        $client = new QueueWatchClient('');
+        $client = new QueuewatchClient('');
 
         expect($client->isConfigured())->toBeFalse();
     });
@@ -35,7 +35,7 @@ describe('QueueWatchClient', function () {
             'api.queuewatch.io/*' => Http::response(['success' => true], 200),
         ]);
 
-        $client = new QueueWatchClient('test-key', 'https://api.queuewatch.io');
+        $client = new QueuewatchClient('test-key', 'https://api.queuewatch.io');
 
         $response = $client->reportFailure([
             'project' => 'Test',
@@ -55,7 +55,7 @@ describe('QueueWatchClient', function () {
             'api.queuewatch.io/*' => Http::response(['message' => 'pong'], 200),
         ]);
 
-        $client = new QueueWatchClient('test-key', 'https://api.queuewatch.io');
+        $client = new QueuewatchClient('test-key', 'https://api.queuewatch.io');
 
         $response = $client->testConnection();
 
@@ -77,7 +77,7 @@ describe('SendFailureReport Job', function () {
         ];
 
         $job = new SendFailureReport($payload);
-        $job->handle(new QueueWatchClient('test-key', 'https://api.queuewatch.io'));
+        $job->handle(new QueuewatchClient('test-key', 'https://api.queuewatch.io'));
 
         Http::assertSent(function (Request $request) {
             return str_contains($request->url(), '/api/v1/failures');
@@ -88,13 +88,13 @@ describe('SendFailureReport Job', function () {
         Http::fake();
 
         $job = new SendFailureReport(['test' => 'data']);
-        $job->handle(new QueueWatchClient(''));
+        $job->handle(new QueuewatchClient(''));
 
         Http::assertNothingSent();
     });
 });
 
-describe('QueueWatch Test Command', function () {
+describe('Queuewatch Test Command', function () {
     it('shows configuration details', function () {
         Http::fake([
             '*' => Http::response(['message' => 'pong'], 200),

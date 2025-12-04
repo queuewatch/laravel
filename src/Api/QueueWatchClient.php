@@ -1,12 +1,12 @@
 <?php
 
-namespace Mvpopuk\LaravelEnhancedFailedJobs\Api;
+namespace Queuewatch\Laravel\Api;
 
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
-class QueueWatchClient
+class QueuewatchClient
 {
     protected string $apiKey;
 
@@ -49,7 +49,7 @@ class QueueWatchClient
                 'Authorization' => 'Bearer '.$this->apiKey,
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
-                'X-QueueWatch-Agent' => 'laravel-enhanced-failed-jobs/1.0',
+                'X-Queuewatch-Agent' => 'queuewatch/laravel 1.0',
             ]);
     }
 

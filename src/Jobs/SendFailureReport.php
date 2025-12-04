@@ -1,6 +1,6 @@
 <?php
 
-namespace Mvpopuk\LaravelEnhancedFailedJobs\Jobs;
+namespace Queuewatch\Laravel\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -8,7 +8,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Mvpopuk\LaravelEnhancedFailedJobs\Api\QueueWatchClient;
+use Queuewatch\Laravel\Api\QueuewatchClient;
 
 class SendFailureReport implements ShouldQueue
 {
@@ -33,7 +33,7 @@ class SendFailureReport implements ShouldQueue
         public array $payload
     ) {}
 
-    public function handle(QueueWatchClient $client): void
+    public function handle(QueuewatchClient $client): void
     {
         if (! $client->isConfigured()) {
             return;
@@ -43,7 +43,7 @@ class SendFailureReport implements ShouldQueue
             $response = $client->reportFailure($this->payload);
 
             if ($response->failed()) {
-                Log::warning('QueueWatch: Failed to report job failure', [
+                Log::warning('Queuewatch: Failed to report job failure', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
@@ -54,7 +54,7 @@ class SendFailureReport implements ShouldQueue
                 }
             }
         } catch (\Throwable $e) {
-            Log::error('QueueWatch: Exception while reporting job failure', [
+            Log::error('Queuewatch: Exception while reporting job failure', [
                 'message' => $e->getMessage(),
             ]);
 
@@ -82,7 +82,7 @@ class SendFailureReport implements ShouldQueue
     public function failed(?\Throwable $exception): void
     {
         // Don't report failures of the failure reporter to avoid infinite loops
-        Log::warning('QueueWatch: Failed to send failure report after all retries', [
+        Log::warning('Queuewatch: Failed to send failure report after all retries', [
             'exception' => $exception?->getMessage(),
         ]);
     }

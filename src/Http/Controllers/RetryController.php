@@ -1,6 +1,6 @@
 <?php
 
-namespace Mvpopuk\LaravelEnhancedFailedJobs\Http\Controllers;
+namespace Queuewatch\Laravel\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,7 +13,7 @@ class RetryController extends Controller
     {
         // Verify the request signature
         if (! $this->verifySignature($request)) {
-            Log::warning('QueueWatch retry request failed signature verification');
+            Log::warning('Queuewatch retry request failed signature verification');
 
             return response()->json([
                 'success' => false,
@@ -35,7 +35,7 @@ class RetryController extends Controller
         // Check if queue is allowed
         $queue = $validated['queue'] ?? 'default';
         if (! $this->isQueueAllowed($queue)) {
-            Log::warning('QueueWatch retry request for disallowed queue', ['queue' => $queue]);
+            Log::warning('Queuewatch retry request for disallowed queue', ['queue' => $queue]);
 
             return response()->json([
                 'success' => false,
@@ -46,7 +46,7 @@ class RetryController extends Controller
         try {
             $this->dispatchJob($validated);
 
-            Log::info('QueueWatch job retry successful', [
+            Log::info('Queuewatch job retry successful', [
                 'job_class' => $validated['job_class'],
                 'queue' => $queue,
             ]);
@@ -56,7 +56,7 @@ class RetryController extends Controller
                 'message' => 'Job dispatched successfully',
             ]);
         } catch (\Exception $e) {
-            Log::error('QueueWatch job retry failed', [
+            Log::error('Queuewatch job retry failed', [
                 'job_class' => $validated['job_class'],
                 'error' => $e->getMessage(),
             ]);

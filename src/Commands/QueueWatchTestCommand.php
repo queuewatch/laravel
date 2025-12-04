@@ -1,21 +1,21 @@
 <?php
 
-namespace Mvpopuk\LaravelEnhancedFailedJobs\Commands;
+namespace Queuewatch\Laravel\Commands;
 
 use Illuminate\Console\Command;
-use Mvpopuk\LaravelEnhancedFailedJobs\Api\QueueWatchClient;
+use Queuewatch\Laravel\Api\QueuewatchClient;
 
-class QueueWatchTestCommand extends Command
+class QueuewatchTestCommand extends Command
 {
     protected $signature = 'queuewatch:test
                             {--send-test : Send a test failure report}';
 
-    protected $description = 'Test the connection to QueueWatch';
+    protected $description = 'Test the connection to Queuewatch';
 
-    public function handle(QueueWatchClient $client): int
+    public function handle(QueuewatchClient $client): int
     {
         $this->newLine();
-        $this->line('  <fg=cyan>QueueWatch Connection Test</>');
+        $this->line('  <fg=cyan>Queuewatch Connection Test</>');
         $this->line('  ─────────────────────────');
         $this->newLine();
 
@@ -29,7 +29,7 @@ class QueueWatchTestCommand extends Command
             return 1;
         }
 
-        $this->info('  Testing connection to QueueWatch...');
+        $this->info('  Testing connection to Queuewatch...');
         $this->newLine();
 
         try {
@@ -68,7 +68,7 @@ class QueueWatchTestCommand extends Command
         return 0;
     }
 
-    protected function checkConfiguration(QueueWatchClient $client): void
+    protected function checkConfiguration(QueuewatchClient $client): void
     {
         $this->line('  <fg=white>Configuration:</>');
         $this->newLine();
@@ -85,7 +85,7 @@ class QueueWatchTestCommand extends Command
         $this->newLine();
     }
 
-    protected function sendTestFailure(QueueWatchClient $client): void
+    protected function sendTestFailure(QueuewatchClient $client): void
     {
         $this->info('  Sending test failure report...');
 
@@ -95,8 +95,8 @@ class QueueWatchTestCommand extends Command
             'job' => [
                 'id' => 'test-'.uniqid(),
                 'uuid' => (string) \Illuminate\Support\Str::uuid(),
-                'name' => 'QueueWatchTestJob',
-                'class' => 'Mvpopuk\\LaravelEnhancedFailedJobs\\Commands\\QueueWatchTestCommand',
+                'name' => 'QueuewatchTestJob',
+                'class' => 'Queuewatch\\Laravel\\Commands\\QueuewatchTestCommand',
                 'queue' => 'default',
                 'connection' => 'sync',
                 'attempts' => 1,
@@ -125,7 +125,7 @@ class QueueWatchTestCommand extends Command
 
             if ($response->successful()) {
                 $this->line('  <fg=green>✓</> Test failure report sent successfully!');
-                $this->line('  <fg=gray>Check your QueueWatch dashboard to see the test failure.</>');
+                $this->line('  <fg=gray>Check your Queuewatch dashboard to see the test failure.</>');
             } else {
                 $this->line('  <fg=red>✗</> Failed to send test report');
                 $this->line("  <fg=gray>Status: {$response->status()}</>");

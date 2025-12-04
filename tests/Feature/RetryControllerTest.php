@@ -7,7 +7,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
-use Mvpopuk\LaravelEnhancedFailedJobs\Http\Controllers\RetryController;
+use Queuewatch\Laravel\Http\Controllers\RetryController;
 
 beforeEach(function () {
     config()->set('queuewatch.api_key', 'test-api-key-12345');

@@ -1,6 +1,6 @@
 <?php
 
-namespace Mvpopuk\LaravelEnhancedFailedJobs\Commands;
+namespace Queuewatch\Laravel\Commands;
 
 use Carbon\Carbon;
 use Illuminate\Console\Command;

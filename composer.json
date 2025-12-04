@@ -1,15 +1,15 @@
 {
-    "name": "mvpopuk/laravel-enhanced-failed-jobs",
-    "description": "Enhanced queue:failed command with JSON output and advanced filtering",
+    "name": "queuewatch/laravel",
+    "description": "Laravel package for Queuewatch - Real-time queue failure monitoring",
     "keywords": [
-        "mvpopuk",
+        "queuewatch",
         "laravel",
         "queue",
         "failed-jobs",
-        "json",
-        "cli"
+        "monitoring",
+        "notifications"
     ],
-    "homepage": "https://github.com/mvpopuk/laravel-enhanced-failed-jobs",
+    "homepage": "https://github.com/queuewatch/laravel",
     "license": "MIT",
     "authors": [
         {
@@ -36,12 +36,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Mvpopuk\\LaravelEnhancedFailedJobs\\": "src/"
+            "Queuewatch\\Laravel\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Mvpopuk\\LaravelEnhancedFailedJobs\\Tests\\": "tests/"
+            "Queuewatch\\Laravel\\Tests\\": "tests/"
         }
     },
     "scripts": {
@@ -60,7 +60,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Mvpopuk\\LaravelEnhancedFailedJobs\\LaravelEnhancedFailedJobsServiceProvider"
+                "Queuewatch\\Laravel\\QueuewatchServiceProvider"
             ]
         }
     },

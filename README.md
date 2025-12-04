@@ -1,34 +1,117 @@
-# Laravel Enhanced Failed Jobs
+# Queuewatch Laravel
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/mvpopuk/laravel-enhanced-failed-jobs.svg?style=flat-square)](https://packagist.org/packages/mvpopuk/laravel-enhanced-failed-jobs)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/mvpopuk/laravel-enhanced-failed-jobs/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/mvpopuk/laravel-enhanced-failed-jobs/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![Total Downloads](https://img.shields.io/packagist/dt/mvpopuk/laravel-enhanced-failed-jobs.svg?style=flat-square)](https://packagist.org/packages/mvpopuk/laravel-enhanced-failed-jobs)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/queuewatch/laravel.svg?style=flat-square)](https://packagist.org/packages/queuewatch/laravel)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/queuewatch/laravel/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/queuewatch/laravel/actions?query=workflow%3Arun-tests+branch%3Amain)
+[![Total Downloads](https://img.shields.io/packagist/dt/queuewatch/laravel.svg?style=flat-square)](https://packagist.org/packages/queuewatch/laravel)
 
-Enhanced `queue:failed` command with JSON output, advanced filtering, and optional QueueWatch dashboard integration (soon).
+Official Laravel package for [Queuewatch](https://queuewatch.io) - Real-time queue failure monitoring with instant notifications.
 
 ## Features
 
-- **CLI Tools** (Free & Open Source)
-  - Advanced filtering by queue, connection, date range, and job class
-  - JSON output for CI/CD pipelines and automation
-  - Partial class name matching
-  - Result limiting
+- **Real-time Failure Reporting** - Automatically capture and report queue job failures to your Queuewatch dashboard
+- **Rich Exception Data** - Full stack traces, job payloads, and server context
+- **Smart Filtering** - Ignore specific jobs, queues, or exception types
+- **Remote Retry** - Retry failed jobs directly from the Queuewatch dashboard
+- **Instant Notifications** - Get notified via Slack, Discord, email, or webhooks when jobs fail
+- **Enhanced CLI** - Advanced `queue:failed` command with JSON output and filtering
 
-- **QueueWatch Integration** (Optional) - WIP
-  - Real-time failure reporting to QueueWatch dashboard
-  - Multi-app monitoring from a single dashboard
-  - Slack, Discord, and PagerDuty alerts
-  - Analytics and failure trends
+## Requirements
+
+- PHP 8.1+
+- Laravel 10.x, 11.x, or 12.x
+- A [Queuewatch](https://queuewatch.io) account
 
 ## Installation
 
 ```bash
-composer require mvpopuk/laravel-enhanced-failed-jobs
+composer require queuewatch/laravel
 ```
 
-The package will automatically register itself.
+Add your API key to `.env`:
 
-## CLI Usage
+```env
+QUEUEWATCH_API_KEY=qw_live_xxxxxxxxxxxxxxxxxxxx
+```
+
+That's it! The package automatically hooks into Laravel's queue system and starts reporting failures.
+
+## Getting Your API Key
+
+1. Sign up at [queuewatch.io](https://queuewatch.io)
+2. Create a new project in your dashboard
+3. Copy the API key from **Settings → API Keys**
+4. Add it to your `.env` file
+
+## Configuration
+
+Publish the config file for advanced customization:
+
+```bash
+php artisan vendor:publish --tag=queuewatch-config
+```
+
+### Available Options
+
+```php
+// config/queuewatch.php
+return [
+    'enabled' => env('QUEUEWATCH_ENABLED', true),
+    'api_key' => env('QUEUEWATCH_API_KEY'),
+    'project' => env('QUEUEWATCH_PROJECT', env('APP_NAME')),
+    'environment' => env('QUEUEWATCH_ENVIRONMENT', env('APP_ENV')),
+
+    // Jobs to ignore
+    'ignored_jobs' => [
+        // App\Jobs\NoisyJob::class,
+    ],
+
+    // Queues to ignore
+    'ignored_queues' => [
+        // 'low-priority',
+    ],
+
+    // Exceptions to ignore
+    'ignored_exceptions' => [
+        // Illuminate\Database\Eloquent\ModelNotFoundException::class,
+    ],
+];
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `QUEUEWATCH_ENABLED` | Enable/disable failure reporting | `true` |
+| `QUEUEWATCH_API_KEY` | Your Queuewatch API key | - |
+| `QUEUEWATCH_PROJECT` | Project name in dashboard | `APP_NAME` |
+| `QUEUEWATCH_ENVIRONMENT` | Environment label (production, staging, etc.) | `APP_ENV` |
+| `QUEUEWATCH_RETRY_ENABLED` | Enable remote retry feature | `false` |
+
+## Testing Your Integration
+
+```bash
+php artisan queuewatch:test
+```
+
+This verifies your API key and connection. Add `--send-test` to send a test failure:
+
+```bash
+php artisan queuewatch:test --send-test
+```
+
+You should see the test failure appear in your [Queuewatch dashboard](https://queuewatch.io/dashboard) within seconds.
+
+## What Gets Reported
+
+When a job fails, Queuewatch captures:
+
+- **Job Details** - Class name, queue, connection, attempts, max tries
+- **Exception** - Message, class, file, line, full stack trace
+- **Payload** - Complete job payload (can be disabled for sensitive data)
+- **Context** - Server hostname, PHP version, Laravel version, timestamp
+- **Environment** - Your configured environment label
+
+## Enhanced CLI
 
 ### Basic Commands
 
@@ -87,24 +170,35 @@ php artisan queue:failed --queue=emails --after=yesterday --limit=10 --json
 }
 ```
 
-### CI/CD Examples
+## Remote Retry
 
-```bash
-# Fail deployment if critical jobs failed
-FAILED_COUNT=$(php artisan queue:failed --json | jq '.count')
-if [ "$FAILED_COUNT" -gt 0 ]; then
-  echo "Found $FAILED_COUNT failed jobs"
-  exit 1
-fi
+Enable remote retry to retry failed jobs directly from the Queuewatch dashboard:
 
-# Get failed jobs from specific queue in last hour
-php artisan queue:failed \
-  --queue=critical \
-  --after="1 hour ago" \
-  --json
+```env
+QUEUEWATCH_RETRY_ENABLED=true
 ```
 
----
+Configure allowed queues for security:
+
+```php
+'retry' => [
+    'enabled' => env('QUEUEWATCH_RETRY_ENABLED', false),
+    'allowed_queues' => ['payments', 'emails'], // or ['*'] for all
+],
+```
+
+When enabled, you can click "Retry" on any failed job in your Queuewatch dashboard, and it will be re-dispatched to your Laravel application.
+
+## Notifications
+
+Configure notifications in your [Queuewatch dashboard](https://queuewatch.io/dashboard/settings/notifications):
+
+- **Slack** - Get alerts in your team's Slack channel
+- **Discord** - Send notifications to Discord webhooks
+- **Email** - Receive email alerts for failures
+- **Webhooks** - Integrate with any service via custom webhooks
+
+Set up notification rules to filter by environment, job type, or failure frequency.
 
 ## Changelog
 

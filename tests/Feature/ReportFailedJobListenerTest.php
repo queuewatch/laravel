@@ -3,8 +3,8 @@
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
-use Mvpopuk\LaravelEnhancedFailedJobs\Jobs\SendFailureReport;
-use Mvpopuk\LaravelEnhancedFailedJobs\Listeners\ReportFailedJob;
+use Queuewatch\Laravel\Jobs\SendFailureReport;
+use Queuewatch\Laravel\Listeners\ReportFailedJob;
 
 beforeEach(function () {
     config()->set('queuewatch.api_key', 'test-api-key');
