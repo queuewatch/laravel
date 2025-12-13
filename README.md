@@ -1,3 +1,6 @@
+<img width="2412" height="1654" alt="CleanShot 2025-12-10 at 14 53 13@2x" src="https://github.com/user-attachments/assets/73bbe659-b924-459a-8c6d-9325cc3bdf82" />
+
+
 # Queuewatch Laravel
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/queuewatch/laravel.svg?style=flat-square)](https://packagist.org/packages/queuewatch/laravel)
@@ -78,7 +81,8 @@ Official Laravel package for [Queuewatch](https://queuewatch.io) - Real-time que
 - **Smart Filtering** - Ignore specific jobs, queues, or exception types
 - **Remote Retry** - Retry failed jobs directly from the Queuewatch dashboard
 - **Instant Notifications** - Get notified via Slack, Discord, email, or webhooks when jobs fail
-- **Enhanced CLI** - Advanced `queue:failed` command with JSON output and filtering
+
+<img width="1200" height="630" alt="Banners Frame 2" src="https://github.com/user-attachments/assets/8efc68c0-f3e8-499a-bb53-955c31ce85f8" />
 
 ## Requirements
 
