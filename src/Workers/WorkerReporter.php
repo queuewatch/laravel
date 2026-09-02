@@ -2,6 +2,7 @@
 
 namespace Queuewatch\Laravel\Workers;
 
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -64,16 +65,27 @@ class WorkerReporter
             return;
         }
 
-        $buffer = $this->store()->get(self::BUFFER_KEY, []);
+        $wrote = $this->withBufferLock(
+            function () use ($memoryMb): bool {
+                $buffer = $this->store()->get(self::BUFFER_KEY, []);
 
-        $buffer[$this->runId] = [
-            'run_id' => $this->runId,
-            'last_seen' => now()->toIso8601String(),
-            'jobs_processed' => $this->jobsProcessed,
-            'memory_mb' => $memoryMb,
-        ];
+                $buffer[$this->runId] = [
+                    'run_id' => $this->runId,
+                    'last_seen' => now()->toIso8601String(),
+                    'jobs_processed' => $this->jobsProcessed,
+                    'memory_mb' => $memoryMb,
+                ];
 
-        $this->store()->put(self::BUFFER_KEY, $buffer, now()->addMinutes(10));
+                $this->store()->put(self::BUFFER_KEY, $buffer, now()->addMinutes(10));
+
+                return true;
+            },
+            fn (): bool => false,
+        );
+
+        if (! $wrote) {
+            return;
+        }
 
         $this->lastHeartbeatAt = microtime(true);
     }
@@ -83,15 +95,58 @@ class WorkerReporter
      */
     public function takeBufferedHeartbeats(): array
     {
-        $buffer = $this->store()->get(self::BUFFER_KEY, []);
+        return $this->withBufferLock(
+            function (): array {
+                $buffer = $this->store()->get(self::BUFFER_KEY, []);
 
-        $this->store()->forget(self::BUFFER_KEY);
+                $this->store()->forget(self::BUFFER_KEY);
 
-        return array_values($buffer);
+                return array_values($buffer);
+            },
+            fn (): array => [],
+        );
     }
 
     public function store(): Repository
     {
         return Cache::store(config('queuewatch.workers.cache_store'));
+    }
+
+    /**
+     * Run $callback while holding a short, non-blocking lock on the
+     * buffer key so concurrent worker processes on the same host cannot
+     * lose each other's writes to a shared read-modify-write race.
+     *
+     * The lock is never awaited — a worker must not block on it. When it
+     * cannot be acquired immediately, $onLockNotAcquired runs instead, so
+     * bufferHeartbeat() simply skips that heartbeat (the worker tries
+     * again next cycle) and takeBufferedHeartbeats() returns an empty
+     * array without touching the buffer, so nothing already stored there
+     * is lost.
+     *
+     * Not every cache store supports locking (e.g. APCu). When the
+     * resolved store's driver doesn't implement LockProvider, $callback
+     * runs unlocked so the package still works on those stores — this is
+     * the buffer's original, pre-locking behaviour.
+     */
+    protected function withBufferLock(callable $callback, callable $onLockNotAcquired): mixed
+    {
+        $store = $this->store();
+
+        if (! $store->getStore() instanceof LockProvider) {
+            return $callback();
+        }
+
+        $lock = $store->lock(self::BUFFER_KEY.':lock', 5);
+
+        if (! $lock->get()) {
+            return $onLockNotAcquired();
+        }
+
+        try {
+            return $callback();
+        } finally {
+            $lock->release();
+        }
     }
 }
