@@ -200,6 +200,8 @@ When enabled, you can click "Retry" on any failed job in your Queuewatch dashboa
 
 Report queue worker lifecycle (start, heartbeat, stop) to Queuewatch so you can see which workers are running, when they last checked in, and why they stopped. This is opt-in: it is disabled by default, so upgrading this package introduces no new behaviour until you turn it on.
 
+**Requires Laravel 12.20 or newer.** `Illuminate\Queue\Events\WorkerStarting` — the event this feature relies on to detect a worker starting up — was not introduced until Laravel 12.20. On Laravel 10.x, 11.x, and 12.0-12.19, enabling worker monitoring reports nothing at all: no run is ever created, so every other lifecycle handler stays inert. A warning is logged when the application boots if you enable worker monitoring on an unsupported version.
+
 ```env
 QUEUEWATCH_WORKERS_ENABLED=true
 QUEUEWATCH_API_KEY=qw_live_xxxxxxxxxxxxxxxxxxxx
@@ -233,7 +235,7 @@ If the configured store can't survive between processes, a warning is logged whe
 
 ### Stop reasons
 
-Worker stop reporting works on Laravel 10 and up: a worker starting, looping, processing jobs, and stopping is reported on every supported version. Structured stop *reasons* (why a worker stopped — `--max-jobs`, `--memory`, an exception, etc.) require Laravel 13.30+, since that's when `WorkerStopping` started carrying that data. On earlier versions, a stop is still reported, just without a reason.
+Given the Laravel 12.20+ floor above, worker start/heartbeat/stop reporting works on every version this package supports. Structured stop *reasons* (why a worker stopped — `--max-jobs`, `--memory`, an exception, etc.) additionally require Laravel 13.30+, since that's when `WorkerStopping` started carrying that data. Between 12.20 and 13.30, a stop is still reported, just without a reason.
 
 ## Notifications
 

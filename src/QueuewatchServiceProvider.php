@@ -92,11 +92,14 @@ class QueuewatchServiceProvider extends ServiceProvider
      * an api key is configured, so installing this package introduces no
      * new behaviour until a customer explicitly turns it on.
      *
-     * Every event is guarded with class_exists() because WorkerStarting,
-     * Looping, JobProcessed, JobFailed and WorkerStopping are not all
-     * present across the Laravel 10-13 versions this package supports.
-     * Registering a listener for an event class the framework doesn't
-     * ship would fatal at boot.
+     * Every event is guarded with class_exists() because Illuminate\Queue\Events\WorkerStarting
+     * does not exist before Laravel 12.20 (JobProcessed, JobFailed,
+     * Looping and WorkerStopping are present across the full 10-13
+     * range this package supports). Registering a listener for an event
+     * class the framework doesn't ship would fatal at boot. Because
+     * startRun() only ever runs from handleStarting(), the absence of
+     * WorkerStarting alone means no run is ever created and every other
+     * handler becomes an inert no-op — hence the separate warning below.
      */
     protected function registerWorkerListeners(): void
     {
@@ -106,6 +109,10 @@ class QueuewatchServiceProvider extends ServiceProvider
 
         if (! $this->app->make(WorkerReporter::class)->hasUsableStore()) {
             Log::warning('Queuewatch worker monitoring needs a shared, persistent cache store; heartbeats will be lost with the current driver.');
+        }
+
+        if (! class_exists(WorkerStarting::class)) {
+            Log::warning('Queuewatch worker monitoring requires Laravel 12.20 or newer; WorkerStarting is not available on this version, so no worker activity will be reported.');
         }
 
         $listeners = [
