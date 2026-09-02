@@ -5,6 +5,7 @@ namespace Queuewatch\Laravel\Api;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Queuewatch\Laravel\Queuewatch;
 
 class QueuewatchClient
 {
@@ -49,7 +50,7 @@ class QueuewatchClient
                 'Authorization' => 'Bearer '.$this->apiKey,
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
-                'X-Queuewatch-Agent' => 'queuewatch/laravel 1.0',
+                'X-Queuewatch-Agent' => 'queuewatch/laravel '.Queuewatch::version(),
             ]);
     }
 
