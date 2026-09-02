@@ -92,6 +92,46 @@ class TrackWorkerLifecycle
     }
 
     /**
+     * Handle the queue worker stopping event.
+     *
+     * Sent synchronously: the worker process is exiting, so there is no
+     * later opportunity to report this. WorkerStopReason (and the
+     * jobsProcessed, memoryUsage, lastJobProcessedAt properties that
+     * arrived alongside it) only exist on Laravel 13.30+, so every one of
+     * them is read through property_exists() and the reason is always
+     * accessed with the null-safe operator — never $reason->value.
+     *
+     * Deliberately untyped for the same reason as handleStarting().
+     */
+    public function handleStopping($event): void
+    {
+        $runId = $this->reporter->runId();
+
+        if (! $this->enabled() || $runId === null) {
+            return;
+        }
+
+        $reason = property_exists($event, 'reason') ? $event->reason : null;
+        $jobsProcessed = property_exists($event, 'jobsProcessed') ? $event->jobsProcessed : null;
+        $memoryUsage = property_exists($event, 'memoryUsage') ? $event->memoryUsage : null;
+        $lastJobProcessedAt = property_exists($event, 'lastJobProcessedAt') ? $event->lastJobProcessedAt : null;
+
+        $this->send(fn () => $this->client->stopWorkerRun($runId, [
+            'reason' => $reason?->value,
+            'reason_description' => $reason?->description(),
+            'status' => (int) ($event->status ?? 0),
+            'jobs_processed' => $jobsProcessed ?? $this->reporter->jobsProcessed(),
+            'memory_mb' => $memoryUsage !== null ? (int) round($memoryUsage) : null,
+            'last_job_processed_at' => $lastJobProcessedAt !== null
+                ? now()->setTimestamp((int) $lastJobProcessedAt)->toIso8601String()
+                : null,
+            'stopped_at' => now()->toIso8601String(),
+        ]));
+
+        $this->reporter->clearRun();
+    }
+
+    /**
      * Whether worker monitoring is enabled and configured to report.
      *
      * Shared by every lifecycle handler (start, heartbeat, stop) added in

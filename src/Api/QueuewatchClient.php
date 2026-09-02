@@ -47,6 +47,11 @@ class QueuewatchClient
         return $this->request()->post('/api/v1/workers/runs', $payload);
     }
 
+    public function stopWorkerRun(string $runId, array $payload): Response
+    {
+        return $this->request()->post("/api/v1/workers/runs/{$runId}/stop", $payload);
+    }
+
     protected function request(): PendingRequest
     {
         return Http::baseUrl($this->endpoint)
