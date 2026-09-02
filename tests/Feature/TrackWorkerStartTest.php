@@ -7,7 +7,6 @@ use Queuewatch\Laravel\Listeners\TrackWorkerLifecycle;
 use Queuewatch\Laravel\Workers\WorkerReporter;
 
 beforeEach(function () {
-    Http::fake();
     config()->set('queuewatch.api_key', 'test-key');
     config()->set('queuewatch.endpoint', 'https://api.queuewatch.test');
     config()->set('queuewatch.workers.enabled', true);
@@ -15,6 +14,8 @@ beforeEach(function () {
 });
 
 it('registers a run when the worker starts', function () {
+    Http::fake();
+
     $reporter = app(WorkerReporter::class);
     $listener = app(TrackWorkerLifecycle::class);
 
@@ -37,6 +38,7 @@ it('registers a run when the worker starts', function () {
 })->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
 
 it('does nothing when worker monitoring is disabled', function () {
+    Http::fake();
     config()->set('queuewatch.workers.enabled', false);
 
     app(TrackWorkerLifecycle::class)->handleStarting(
@@ -47,6 +49,7 @@ it('does nothing when worker monitoring is disabled', function () {
 })->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
 
 it('does nothing without an api key', function () {
+    Http::fake();
     config()->set('queuewatch.api_key', null);
 
     app(TrackWorkerLifecycle::class)->handleStarting(
@@ -63,3 +66,27 @@ it('swallows a transport failure', function () {
         new WorkerStarting('redis', 'default', new WorkerOptions)
     );
 })->throwsNoExceptions()->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
+
+it('clears the run when the registration request throws', function () {
+    Http::fake(fn () => throw new Exception('connection refused'));
+
+    $reporter = app(WorkerReporter::class);
+
+    app(TrackWorkerLifecycle::class)->handleStarting(
+        new WorkerStarting('redis', 'default', new WorkerOptions)
+    );
+
+    expect($reporter->runId())->toBeNull();
+})->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
+
+it('clears the run when the registration request returns a server error', function () {
+    Http::fake(['*' => Http::response(['error' => 'nope'], 500)]);
+
+    $reporter = app(WorkerReporter::class);
+
+    app(TrackWorkerLifecycle::class)->handleStarting(
+        new WorkerStarting('redis', 'default', new WorkerOptions)
+    );
+
+    expect($reporter->runId())->toBeNull();
+})->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');

@@ -43,4 +43,4 @@ it('schedules the flush command every minute', function () {
         ->filter(fn ($event) => str_contains($event->command ?? '', 'queuewatch:workers:flush'));
 
     expect($events)->not->toBeEmpty();
-});
+})->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');

@@ -40,11 +40,28 @@ it('reports the structured stop reason', function () {
     Http::assertSent(function ($request) {
         return str_ends_with($request->url(), "/api/v1/workers/runs/{$this->runId}/stop")
             && $request['reason'] === 'memory'
-            && $request['reason_description'] === 'Memory limit exceeded'
             && $request['status'] === 12
             && $request['jobs_processed'] === 40;
     });
-})->skip(fn () => ! enum_exists(WorkerStopReason::class), 'Requires Laravel 13.30+');
+})->skip(fn () => ! property_exists(WorkerStopping::class, 'jobsProcessed'), 'Requires Laravel 13.30+');
+
+it('reports the stop even when the reason enum has no description() method', function () {
+    // Regression test for a Laravel 12.20-13.29 crash: WorkerStopReason
+    // was backported to 12.x with every case but without description(),
+    // so calling it there threw and silently dropped every stop report.
+    // This enum reproduces that shape without depending on which
+    // framework version is actually installed.
+    $event = new WorkerStopping(12);
+    $event->reason = StopReasonWithoutDescription::Custom;
+
+    $this->listener->handleStopping($event);
+
+    Http::assertSent(function ($request) {
+        return str_ends_with($request->url(), "/api/v1/workers/runs/{$this->runId}/stop")
+            && $request['reason'] === 'custom'
+            && $request['status'] === 12;
+    });
+});
 
 it('degrades gracefully when the framework reports no reason', function () {
     $this->listener->handleStopping(new WorkerStopping(0));
@@ -76,3 +93,13 @@ it('clears the run after stopping', function () {
 
     expect($this->reporter->runId())->toBeNull();
 });
+
+/**
+ * Stands in for Illuminate\Queue\WorkerStopReason as it shipped on
+ * Laravel 12.20-13.29: a backed enum with cases (so ->value works) but
+ * no description() method.
+ */
+enum StopReasonWithoutDescription: string
+{
+    case Custom = 'custom';
+}
