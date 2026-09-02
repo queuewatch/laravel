@@ -11,6 +11,7 @@ use Queuewatch\Laravel\Commands\ListFailedCommand;
 use Queuewatch\Laravel\Commands\QueuewatchTestCommand;
 use Queuewatch\Laravel\Http\Controllers\RetryController;
 use Queuewatch\Laravel\Listeners\ReportFailedJob;
+use Queuewatch\Laravel\Workers\WorkerReporter;
 
 class QueuewatchServiceProvider extends ServiceProvider
 {
@@ -45,6 +46,8 @@ class QueuewatchServiceProvider extends ServiceProvider
                 config('queuewatch.timeout')
             );
         });
+
+        $this->app->singleton(WorkerReporter::class);
     }
 
     protected function registerFailedJobListener(): void

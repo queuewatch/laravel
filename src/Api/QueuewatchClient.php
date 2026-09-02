@@ -42,6 +42,11 @@ class QueuewatchClient
         return $this->request()->get('/api/v1/project');
     }
 
+    public function startWorkerRun(array $payload): Response
+    {
+        return $this->request()->post('/api/v1/workers/runs', $payload);
+    }
+
     protected function request(): PendingRequest
     {
         return Http::baseUrl($this->endpoint)
