@@ -3,6 +3,7 @@
 use Illuminate\Queue\Failed\DatabaseFailedJobProvider;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     $this->app['config']->set('queue.failed.database', 'testing');
@@ -217,7 +218,7 @@ it('json output includes all expected fields', function () {
 function insertFailedJob(array $overrides = []): void
 {
     $defaults = [
-        'uuid' => (string) \Illuminate\Support\Str::uuid(),
+        'uuid' => (string) Str::uuid(),
         'connection' => 'database',
         'queue' => 'default',
         'payload' => json_encode([

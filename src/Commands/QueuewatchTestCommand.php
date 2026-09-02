@@ -3,6 +3,7 @@
 namespace Queuewatch\Laravel\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 use Queuewatch\Laravel\Api\QueuewatchClient;
 
 class QueuewatchTestCommand extends Command
@@ -94,7 +95,7 @@ class QueuewatchTestCommand extends Command
             'environment' => config('queuewatch.environment', config('app.env')),
             'job' => [
                 'id' => 'test-'.uniqid(),
-                'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                'uuid' => (string) Str::uuid(),
                 'name' => 'QueuewatchTestJob',
                 'class' => 'Queuewatch\\Laravel\\Commands\\QueuewatchTestCommand',
                 'queue' => 'default',
