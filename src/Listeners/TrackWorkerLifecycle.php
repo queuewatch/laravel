@@ -58,6 +58,40 @@ class TrackWorkerLifecycle
     }
 
     /**
+     * Handle the queue worker looping event.
+     *
+     * Fires on every iteration of the worker loop, so this must stay
+     * cheap: the throttle check happens before any other work, and this
+     * method never performs HTTP or queue dispatch — only an in-memory
+     * buffer write.
+     *
+     * Deliberately untyped for the same reason as handleStarting().
+     */
+    public function handleLooping($event): void
+    {
+        if (! $this->enabled() || ! $this->reporter->shouldHeartbeat()) {
+            return;
+        }
+
+        $this->reporter->bufferHeartbeat((int) round(memory_get_usage(true) / 1024 / 1024));
+    }
+
+    /**
+     * Handle the queue job processed/failed event.
+     *
+     * Registered for both JobProcessed and JobFailed, whose payloads
+     * differ, so $event is never inspected here.
+     */
+    public function handleJobProcessed($event): void
+    {
+        if (! $this->enabled()) {
+            return;
+        }
+
+        $this->reporter->recordJobProcessed();
+    }
+
+    /**
      * Whether worker monitoring is enabled and configured to report.
      *
      * Shared by every lifecycle handler (start, heartbeat, stop) added in
