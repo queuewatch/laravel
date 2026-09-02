@@ -14,9 +14,25 @@ class FlushWorkerHeartbeatsCommand extends Command
 
     protected $description = 'Flush buffered worker heartbeats to Queuewatch';
 
+    /**
+     * Flush buffered heartbeats, honouring the same backoff contract as
+     * every other outbound request this package makes.
+     *
+     * Returns early when already backed off, rather than draining the
+     * buffer only to restore it again — a revoked api key would
+     * otherwise return 403 forever while this still ran every minute,
+     * refreshing the buffer TTL each time. On a fresh 403/429 the chunk
+     * is dropped, not restored: restoring it would just recreate the
+     * same unbounded retry. Restoring is reserved for failures that are
+     * plausibly transient — a 5xx or a transport exception.
+     */
     public function handle(WorkerReporter $reporter, QueuewatchClient $client): int
     {
         if (! config('queuewatch.workers.enabled', false) || empty(config('queuewatch.api_key'))) {
+            return self::SUCCESS;
+        }
+
+        if ($reporter->isBackedOff()) {
             return self::SUCCESS;
         }
 
@@ -30,32 +46,28 @@ class FlushWorkerHeartbeatsCommand extends Command
             try {
                 $response = $client->flushWorkerHeartbeats($chunk);
 
-                if ($response->failed()) {
+                if (in_array($response->status(), [403, 429], true)) {
                     Log::debug('Queuewatch heartbeat flush rejected', ['status' => $response->status()]);
 
-                    $this->restore($reporter, $chunk);
+                    $reporter->backOff();
+
+                    continue;
+                }
+
+                if ($response->serverError()) {
+                    Log::debug('Queuewatch heartbeat flush rejected', ['status' => $response->status()]);
+
+                    $reporter->restoreHeartbeats($chunk);
+                } elseif ($response->failed()) {
+                    Log::debug('Queuewatch heartbeat flush rejected', ['status' => $response->status()]);
                 }
             } catch (Throwable $e) {
                 Log::debug('Queuewatch heartbeat flush failed', ['error' => $e->getMessage()]);
 
-                $this->restore($reporter, $chunk);
+                $reporter->restoreHeartbeats($chunk);
             }
         }
 
         return self::SUCCESS;
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $heartbeats
-     */
-    protected function restore(WorkerReporter $reporter, array $heartbeats): void
-    {
-        $buffer = $reporter->store()->get(WorkerReporter::BUFFER_KEY, []);
-
-        foreach ($heartbeats as $heartbeat) {
-            $buffer[$heartbeat['run_id']] ??= $heartbeat;
-        }
-
-        $reporter->store()->put(WorkerReporter::BUFFER_KEY, $buffer, now()->addMinutes(10));
     }
 }

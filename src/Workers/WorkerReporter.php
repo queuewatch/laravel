@@ -100,6 +100,42 @@ class WorkerReporter
     }
 
     /**
+     * Restore heartbeats that failed to flush back into the buffer so
+     * they are retried on the next scheduled flush.
+     *
+     * Goes through the same withBufferLock() protection and internal
+     * try/catch pattern as bufferHeartbeat() and takeBufferedHeartbeats()
+     * — a raw read-modify-write here would reopen the lost-update race
+     * those two already close. The ??= preserves the original semantics:
+     * if the worker has since buffered a fresher heartbeat for a run
+     * (e.g. it kept looping while the flush request was in flight), that
+     * fresher heartbeat is never overwritten by the one being restored.
+     *
+     * @param  array<int, array<string, mixed>>  $heartbeats
+     */
+    public function restoreHeartbeats(array $heartbeats): void
+    {
+        try {
+            $this->withBufferLock(
+                function () use ($heartbeats): bool {
+                    $buffer = $this->store()->get(self::BUFFER_KEY, []);
+
+                    foreach ($heartbeats as $heartbeat) {
+                        $buffer[$heartbeat['run_id']] ??= $heartbeat;
+                    }
+
+                    $this->store()->put(self::BUFFER_KEY, $buffer, now()->addMinutes(10));
+
+                    return true;
+                },
+                fn (): bool => false,
+            );
+        } catch (\Throwable $e) {
+            Log::debug('Queuewatch worker heartbeat restore failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function takeBufferedHeartbeats(): array
@@ -142,7 +178,7 @@ class WorkerReporter
         }
     }
 
-    public function store(): Repository
+    protected function store(): Repository
     {
         return Cache::store(config('queuewatch.workers.cache_store'));
     }

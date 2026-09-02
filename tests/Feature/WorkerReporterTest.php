@@ -164,6 +164,117 @@ it('still buffers a heartbeat when the cache store does not support locking', fu
         ->and($this->reporter->takeBufferedHeartbeats())->toBeEmpty();
 });
 
+it('restores heartbeats back into the buffer', function () {
+    $this->reporter->startRun('redis', 'default', null);
+
+    $this->reporter->restoreHeartbeats([
+        ['run_id' => $this->reporter->runId(), 'last_seen' => now()->toIso8601String(), 'jobs_processed' => 3, 'memory_mb' => 64],
+    ]);
+
+    $drained = $this->reporter->takeBufferedHeartbeats();
+
+    expect($drained)->toHaveCount(1)
+        ->and($drained[0]['jobs_processed'])->toBe(3);
+});
+
+it('never overwrites a fresher heartbeat already buffered for the same run when restoring', function () {
+    $this->reporter->startRun('redis', 'default', null);
+    $this->reporter->bufferHeartbeat(128);
+
+    $this->reporter->restoreHeartbeats([
+        ['run_id' => $this->reporter->runId(), 'last_seen' => now()->subMinute()->toIso8601String(), 'jobs_processed' => 0, 'memory_mb' => 1],
+    ]);
+
+    $drained = $this->reporter->takeBufferedHeartbeats();
+
+    expect($drained)->toHaveCount(1)
+        ->and($drained[0]['memory_mb'])->toBe(128);
+});
+
+it('skips restoring heartbeats when another process already holds the buffer lock', function () {
+    $store = Cache::store(config('queuewatch.workers.cache_store'));
+    $externalLock = $store->lock(WorkerReporter::BUFFER_KEY.':lock', 5);
+
+    expect($externalLock->get())->toBeTrue();
+
+    $this->reporter->restoreHeartbeats([
+        ['run_id' => 'some-run', 'last_seen' => now()->toIso8601String(), 'jobs_processed' => 1, 'memory_mb' => 1],
+    ]);
+
+    $externalLock->release();
+
+    expect($store->get(WorkerReporter::BUFFER_KEY, []))->toBeEmpty();
+});
+
+it('does not let a cache store failure escape restoreHeartbeats', function () {
+    Cache::extend('queuewatch_throwing_restore_test', function () {
+        return Cache::repository(new class implements Store
+        {
+            public function get($key)
+            {
+                throw new RuntimeException('cache store unavailable');
+            }
+
+            public function many(array $keys)
+            {
+                throw new RuntimeException('cache store unavailable');
+            }
+
+            public function put($key, $value, $seconds)
+            {
+                throw new RuntimeException('cache store unavailable');
+            }
+
+            public function putMany(array $values, $seconds)
+            {
+                throw new RuntimeException('cache store unavailable');
+            }
+
+            public function increment($key, $value = 1)
+            {
+                throw new RuntimeException('cache store unavailable');
+            }
+
+            public function decrement($key, $value = 1)
+            {
+                throw new RuntimeException('cache store unavailable');
+            }
+
+            public function forever($key, $value)
+            {
+                throw new RuntimeException('cache store unavailable');
+            }
+
+            public function touch($key, $seconds)
+            {
+                throw new RuntimeException('cache store unavailable');
+            }
+
+            public function forget($key)
+            {
+                throw new RuntimeException('cache store unavailable');
+            }
+
+            public function flush()
+            {
+                throw new RuntimeException('cache store unavailable');
+            }
+
+            public function getPrefix()
+            {
+                return '';
+            }
+        });
+    });
+
+    config()->set('cache.stores.queuewatch_throwing_restore_test', ['driver' => 'queuewatch_throwing_restore_test']);
+    config()->set('queuewatch.workers.cache_store', 'queuewatch_throwing_restore_test');
+
+    $this->reporter->restoreHeartbeats([
+        ['run_id' => 'some-run', 'last_seen' => now()->toIso8601String(), 'jobs_processed' => 1, 'memory_mb' => 1],
+    ]);
+})->throwsNoExceptions();
+
 it('skips buffering a heartbeat when another process already holds the buffer lock', function () {
     $store = Cache::store(config('queuewatch.workers.cache_store'));
     $externalLock = $store->lock(WorkerReporter::BUFFER_KEY.':lock', 5);

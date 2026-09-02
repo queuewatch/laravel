@@ -68,16 +68,67 @@ it('does nothing when worker monitoring is disabled', function () {
     Http::assertNothingSent();
 });
 
-it('chunks a large buffer into batches of 500', function () {
+it('sends nothing and leaves the buffer alone while already backed off', function () {
     Http::fake();
 
     $reporter = app(WorkerReporter::class);
+    $reporter->startRun('redis', 'default', null);
+    $reporter->bufferHeartbeat(64);
+    $reporter->backOff();
+
+    $this->artisan('queuewatch:workers:flush')->assertSuccessful();
+
+    Http::assertNothingSent();
+    expect($reporter->takeBufferedHeartbeats())->toHaveCount(1);
+});
+
+it('backs off and drops the chunk on a 403 response instead of restoring it', function () {
+    Http::fake(['*' => Http::response(['error' => 'forbidden'], 403)]);
+
+    $reporter = app(WorkerReporter::class);
+    $reporter->startRun('redis', 'default', null);
+    $reporter->bufferHeartbeat(64);
+
+    $this->artisan('queuewatch:workers:flush')->assertSuccessful();
+
+    expect($reporter->isBackedOff())->toBeTrue()
+        ->and($reporter->takeBufferedHeartbeats())->toBeEmpty();
+});
+
+it('backs off and drops the chunk on a 429 response instead of restoring it', function () {
+    Http::fake(['*' => Http::response(['error' => 'too many requests'], 429)]);
+
+    $reporter = app(WorkerReporter::class);
+    $reporter->startRun('redis', 'default', null);
+    $reporter->bufferHeartbeat(64);
+
+    $this->artisan('queuewatch:workers:flush')->assertSuccessful();
+
+    expect($reporter->isBackedOff())->toBeTrue()
+        ->and($reporter->takeBufferedHeartbeats())->toBeEmpty();
+});
+
+it('drops the chunk without restoring or backing off on an unrelated client error', function () {
+    Http::fake(['*' => Http::response(['error' => 'bad request'], 400)]);
+
+    $reporter = app(WorkerReporter::class);
+    $reporter->startRun('redis', 'default', null);
+    $reporter->bufferHeartbeat(64);
+
+    $this->artisan('queuewatch:workers:flush')->assertSuccessful();
+
+    expect($reporter->isBackedOff())->toBeFalse()
+        ->and($reporter->takeBufferedHeartbeats())->toBeEmpty();
+});
+
+it('chunks a large buffer into batches of 500', function () {
+    Http::fake();
 
     $buffer = collect(range(1, 1200))->mapWithKeys(fn ($i) => [
         "run-{$i}" => ['run_id' => (string) Str::uuid(), 'last_seen' => now()->toIso8601String(), 'jobs_processed' => 1, 'memory_mb' => 64],
     ])->all();
 
-    $reporter->store()->put(WorkerReporter::BUFFER_KEY, $buffer, now()->addMinutes(10));
+    Cache::store(config('queuewatch.workers.cache_store'))->put(WorkerReporter::BUFFER_KEY, $buffer, now()->addMinutes(10));
 
     $this->artisan('queuewatch:workers:flush')->assertSuccessful();
 
