@@ -11,6 +11,8 @@ class WorkerReporter
 {
     public const BUFFER_KEY = 'queuewatch:worker-heartbeats';
 
+    public const BACKOFF_KEY = 'queuewatch:worker-backoff';
+
     protected ?string $runId = null;
 
     protected int $jobsProcessed = 0;
@@ -105,6 +107,16 @@ class WorkerReporter
             },
             fn (): array => [],
         );
+    }
+
+    public function isBackedOff(): bool
+    {
+        return (bool) $this->store()->get(self::BACKOFF_KEY, false);
+    }
+
+    public function backOff(): void
+    {
+        $this->store()->put(self::BACKOFF_KEY, true, now()->addHour());
     }
 
     public function store(): Repository

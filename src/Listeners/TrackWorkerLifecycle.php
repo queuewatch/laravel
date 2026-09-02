@@ -32,29 +32,36 @@ class TrackWorkerLifecycle
 
         $this->reporter->startRun($event->connectionName, $event->queue, $options);
 
-        $this->send(fn () => $this->client->startWorkerRun([
-            'run_id' => $this->reporter->runId(),
-            'environment' => config('queuewatch.environment', config('app.env')),
-            'name' => $options->name ?? null,
-            'hostname' => gethostname(),
-            'pid' => getmypid(),
-            'connection' => $event->connectionName,
-            'queues' => array_values(array_filter(explode(',', (string) $event->queue))),
-            'options' => [
-                'memory' => $options->memory ?? null,
-                'timeout' => $options->timeout ?? null,
-                'max_jobs' => $options->maxJobs ?? null,
-                'max_time' => $options->maxTime ?? null,
-                'sleep' => $options->sleep ?? null,
-                'max_tries' => $options->maxTries ?? null,
-                'backoff' => $options->backoff ?? null,
-            ],
-            'heartbeat_interval' => (int) config('queuewatch.workers.heartbeat_interval', 15),
-            'laravel_version' => app()->version(),
-            'php_version' => PHP_VERSION,
-            'package_version' => Queuewatch::version(),
-            'started_at' => now()->toIso8601String(),
-        ]));
+        $this->send(function () use ($options, $event): void {
+            $response = $this->client->startWorkerRun([
+                'run_id' => $this->reporter->runId(),
+                'environment' => config('queuewatch.environment', config('app.env')),
+                'name' => $options->name ?? null,
+                'hostname' => gethostname(),
+                'pid' => getmypid(),
+                'connection' => $event->connectionName,
+                'queues' => array_values(array_filter(explode(',', (string) $event->queue))),
+                'options' => [
+                    'memory' => $options->memory ?? null,
+                    'timeout' => $options->timeout ?? null,
+                    'max_jobs' => $options->maxJobs ?? null,
+                    'max_time' => $options->maxTime ?? null,
+                    'sleep' => $options->sleep ?? null,
+                    'max_tries' => $options->maxTries ?? null,
+                    'backoff' => $options->backoff ?? null,
+                ],
+                'heartbeat_interval' => (int) config('queuewatch.workers.heartbeat_interval', 15),
+                'laravel_version' => app()->version(),
+                'php_version' => PHP_VERSION,
+                'package_version' => Queuewatch::version(),
+                'started_at' => now()->toIso8601String(),
+            ]);
+
+            if (in_array($response->status(), [403, 429], true)) {
+                $this->reporter->backOff();
+                $this->reporter->clearRun();
+            }
+        });
     }
 
     /**
@@ -141,7 +148,8 @@ class TrackWorkerLifecycle
     protected function enabled(): bool
     {
         return (bool) config('queuewatch.workers.enabled', false)
-            && ! empty(config('queuewatch.api_key'));
+            && ! empty(config('queuewatch.api_key'))
+            && ! $this->reporter->isBackedOff();
     }
 
     /**
