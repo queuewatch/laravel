@@ -28,10 +28,15 @@ it('buffers a heartbeat without making a request', function () {
 
 it('respects the heartbeat interval across loops', function () {
     $this->listener->handleLooping(new Looping('redis', 'default'));
+    $this->listener->handleJobProcessed(new stdClass);
     $this->listener->handleLooping(new Looping('redis', 'default'));
+    $this->listener->handleJobProcessed(new stdClass);
     $this->listener->handleLooping(new Looping('redis', 'default'));
 
-    expect($this->reporter->takeBufferedHeartbeats())->toHaveCount(1);
+    $heartbeats = $this->reporter->takeBufferedHeartbeats();
+
+    expect($heartbeats)->toHaveCount(1)
+        ->and($heartbeats[0]['jobs_processed'])->toBe(0);
 });
 
 it('counts processed jobs into the heartbeat', function () {
