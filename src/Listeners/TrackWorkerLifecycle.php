@@ -142,8 +142,9 @@ class TrackWorkerLifecycle
      * Whether worker monitoring is enabled and configured to report.
      *
      * Shared by every lifecycle handler (start, heartbeat, stop) added in
-     * later tasks — nothing may be sent to the QueueWatch API unless both
-     * conditions hold.
+     * later tasks — nothing may be sent to the QueueWatch API unless all
+     * three conditions hold: monitoring is enabled, an api key is
+     * configured, and the host is not currently backed off.
      */
     protected function enabled(): bool
     {

@@ -5,6 +5,7 @@ namespace Queuewatch\Laravel\Workers;
 use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class WorkerReporter
@@ -67,23 +68,29 @@ class WorkerReporter
             return;
         }
 
-        $wrote = $this->withBufferLock(
-            function () use ($memoryMb): bool {
-                $buffer = $this->store()->get(self::BUFFER_KEY, []);
+        try {
+            $wrote = $this->withBufferLock(
+                function () use ($memoryMb): bool {
+                    $buffer = $this->store()->get(self::BUFFER_KEY, []);
 
-                $buffer[$this->runId] = [
-                    'run_id' => $this->runId,
-                    'last_seen' => now()->toIso8601String(),
-                    'jobs_processed' => $this->jobsProcessed,
-                    'memory_mb' => $memoryMb,
-                ];
+                    $buffer[$this->runId] = [
+                        'run_id' => $this->runId,
+                        'last_seen' => now()->toIso8601String(),
+                        'jobs_processed' => $this->jobsProcessed,
+                        'memory_mb' => $memoryMb,
+                    ];
 
-                $this->store()->put(self::BUFFER_KEY, $buffer, now()->addMinutes(10));
+                    $this->store()->put(self::BUFFER_KEY, $buffer, now()->addMinutes(10));
 
-                return true;
-            },
-            fn (): bool => false,
-        );
+                    return true;
+                },
+                fn (): bool => false,
+            );
+        } catch (\Throwable $e) {
+            Log::debug('Queuewatch worker heartbeat buffer write failed', ['error' => $e->getMessage()]);
+
+            return;
+        }
 
         if (! $wrote) {
             return;
@@ -97,26 +104,42 @@ class WorkerReporter
      */
     public function takeBufferedHeartbeats(): array
     {
-        return $this->withBufferLock(
-            function (): array {
-                $buffer = $this->store()->get(self::BUFFER_KEY, []);
+        try {
+            return $this->withBufferLock(
+                function (): array {
+                    $buffer = $this->store()->get(self::BUFFER_KEY, []);
 
-                $this->store()->forget(self::BUFFER_KEY);
+                    $this->store()->forget(self::BUFFER_KEY);
 
-                return array_values($buffer);
-            },
-            fn (): array => [],
-        );
+                    return array_values($buffer);
+                },
+                fn (): array => [],
+            );
+        } catch (\Throwable $e) {
+            Log::debug('Queuewatch worker heartbeat buffer read failed', ['error' => $e->getMessage()]);
+
+            return [];
+        }
     }
 
     public function isBackedOff(): bool
     {
-        return (bool) $this->store()->get(self::BACKOFF_KEY, false);
+        try {
+            return (bool) $this->store()->get(self::BACKOFF_KEY, false);
+        } catch (\Throwable $e) {
+            Log::debug('Queuewatch worker backoff check failed', ['error' => $e->getMessage()]);
+
+            return false;
+        }
     }
 
     public function backOff(): void
     {
-        $this->store()->put(self::BACKOFF_KEY, true, now()->addHour());
+        try {
+            $this->store()->put(self::BACKOFF_KEY, true, now()->addHour());
+        } catch (\Throwable $e) {
+            Log::debug('Queuewatch worker backoff write failed', ['error' => $e->getMessage()]);
+        }
     }
 
     public function store(): Repository
