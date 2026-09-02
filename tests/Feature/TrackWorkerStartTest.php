@@ -34,7 +34,7 @@ it('registers a run when the worker starts', function () {
             && $request['heartbeat_interval'] === 15
             && $request['php_version'] === PHP_VERSION;
     });
-});
+})->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
 
 it('does nothing when worker monitoring is disabled', function () {
     config()->set('queuewatch.workers.enabled', false);
@@ -44,7 +44,7 @@ it('does nothing when worker monitoring is disabled', function () {
     );
 
     Http::assertNothingSent();
-});
+})->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
 
 it('does nothing without an api key', function () {
     config()->set('queuewatch.api_key', null);
@@ -54,7 +54,7 @@ it('does nothing without an api key', function () {
     );
 
     Http::assertNothingSent();
-});
+})->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
 
 it('swallows a transport failure', function () {
     Http::fake(fn () => throw new Exception('connection refused'));
@@ -62,4 +62,4 @@ it('swallows a transport failure', function () {
     app(TrackWorkerLifecycle::class)->handleStarting(
         new WorkerStarting('redis', 'default', new WorkerOptions)
     );
-})->throwsNoExceptions();
+})->throwsNoExceptions()->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');

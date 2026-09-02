@@ -23,7 +23,7 @@ it('backs off after a plan rejection', function () {
     );
 
     expect(app(WorkerReporter::class)->isBackedOff())->toBeTrue();
-});
+})->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
 
 it('backs off after hitting the worker limit', function () {
     Http::fake(['*' => Http::response(['success' => false], 429)]);
@@ -33,7 +33,7 @@ it('backs off after hitting the worker limit', function () {
     );
 
     expect(app(WorkerReporter::class)->isBackedOff())->toBeTrue();
-});
+})->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
 
 it('sends nothing while backed off', function () {
     app(WorkerReporter::class)->backOff();
@@ -44,7 +44,7 @@ it('sends nothing while backed off', function () {
     );
 
     Http::assertNothingSent();
-});
+})->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
 
 it('does not back off on a successful start', function () {
     Http::fake(['*' => Http::response(['success' => true], 201)]);
@@ -54,7 +54,7 @@ it('does not back off on a successful start', function () {
     );
 
     expect(app(WorkerReporter::class)->isBackedOff())->toBeFalse();
-});
+})->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
 
 it('does not back off on a server error', function () {
     Http::fake(['*' => Http::response(['success' => false], 500)]);
@@ -64,7 +64,7 @@ it('does not back off on a server error', function () {
     );
 
     expect(app(WorkerReporter::class)->isBackedOff())->toBeFalse();
-});
+})->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
 
 it('does not back off on a connection failure', function () {
     Http::fake(fn () => throw new Exception('connection refused'));
@@ -74,7 +74,7 @@ it('does not back off on a connection failure', function () {
     );
 
     expect(app(WorkerReporter::class)->isBackedOff())->toBeFalse();
-});
+})->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
 
 it('does not let a cache store failure escape into the worker', function () {
     Cache::extend('queuewatch_throwing_test', function () {

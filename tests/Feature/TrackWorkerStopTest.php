@@ -9,6 +9,10 @@ use Queuewatch\Laravel\Listeners\TrackWorkerLifecycle;
 use Queuewatch\Laravel\Workers\WorkerReporter;
 
 beforeEach(function () {
+    if (! class_exists(WorkerStarting::class)) {
+        $this->markTestSkipped('Requires Laravel 12.20+');
+    }
+
     Http::fake();
     config()->set('queuewatch.api_key', 'test-key');
     config()->set('queuewatch.endpoint', 'https://api.queuewatch.test');
