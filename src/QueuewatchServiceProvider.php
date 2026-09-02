@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Queuewatch\Laravel\Api\QueuewatchClient;
+use Queuewatch\Laravel\Commands\FlushWorkerHeartbeatsCommand;
 use Queuewatch\Laravel\Commands\ListFailedCommand;
 use Queuewatch\Laravel\Commands\QueuewatchTestCommand;
 use Queuewatch\Laravel\Http\Controllers\RetryController;
@@ -21,6 +22,7 @@ class QueuewatchServiceProvider extends ServiceProvider
             $this->commands([
                 ListFailedCommand::class,
                 QueuewatchTestCommand::class,
+                FlushWorkerHeartbeatsCommand::class,
             ]);
 
             $this->publishes([

@@ -52,6 +52,11 @@ class QueuewatchClient
         return $this->request()->post("/api/v1/workers/runs/{$runId}/stop", $payload);
     }
 
+    public function flushWorkerHeartbeats(array $heartbeats): Response
+    {
+        return $this->request()->post('/api/v1/workers/heartbeats', ['heartbeats' => $heartbeats]);
+    }
+
     protected function request(): PendingRequest
     {
         return Http::baseUrl($this->endpoint)
