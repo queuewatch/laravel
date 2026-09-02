@@ -92,7 +92,13 @@ class TrackWorkerLifecycle
      */
     public function handleLooping($event): void
     {
-        if (! $this->reporter->shouldHeartbeat() || ! $this->enabled()) {
+        if (! $this->reporter->shouldHeartbeat()) {
+            return;
+        }
+
+        if (! $this->enabled()) {
+            $this->reporter->deferHeartbeat();
+
             return;
         }
 

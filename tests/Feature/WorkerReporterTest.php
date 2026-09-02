@@ -37,6 +37,18 @@ it('throttles heartbeats to the configured interval', function () {
     expect($this->reporter->shouldHeartbeat())->toBeFalse();
 });
 
+it('defers the heartbeat throttle without buffering one', function () {
+    config()->set('queuewatch.workers.heartbeat_interval', 15);
+    $this->reporter->startRun('redis', 'default', null);
+
+    expect($this->reporter->shouldHeartbeat())->toBeTrue();
+
+    $this->reporter->deferHeartbeat();
+
+    expect($this->reporter->shouldHeartbeat())->toBeFalse()
+        ->and($this->reporter->takeBufferedHeartbeats())->toBeEmpty();
+});
+
 it('buffers and drains heartbeats', function () {
     $this->reporter->startRun('redis', 'default', null);
     $this->reporter->bufferHeartbeat(96);

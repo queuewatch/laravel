@@ -62,6 +62,24 @@ class WorkerReporter
         return (microtime(true) - $this->lastHeartbeatAt) >= (int) config('queuewatch.workers.heartbeat_interval', 15);
     }
 
+    /**
+     * Advance the heartbeat throttle without buffering a heartbeat.
+     *
+     * Used when shouldHeartbeat() passed but enabled() then suppressed the
+     * heartbeat (e.g. a backoff set mid-run): without this, lastHeartbeatAt
+     * never advances, so shouldHeartbeat() stays true and every subsequent
+     * loop iteration re-pays enabled()'s cache read for the rest of the
+     * backoff.
+     */
+    public function deferHeartbeat(): void
+    {
+        if ($this->runId === null) {
+            return;
+        }
+
+        $this->lastHeartbeatAt = microtime(true);
+    }
+
     public function bufferHeartbeat(int $memoryMb): void
     {
         if ($this->runId === null) {
