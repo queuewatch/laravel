@@ -148,6 +148,27 @@ class WorkerReporter
     }
 
     /**
+     * Whether the configured cache store can survive between processes.
+     *
+     * The heartbeat buffer is written by the worker process and read by
+     * the scheduled flush command, so a store scoped to a single process
+     * (array, null) silently drops every heartbeat.
+     */
+    public function hasUsableStore(): bool
+    {
+        return ! in_array(
+            config('cache.stores.'.$this->storeName().'.driver'),
+            ['array', 'null'],
+            true
+        );
+    }
+
+    protected function storeName(): string
+    {
+        return config('queuewatch.workers.cache_store') ?? config('cache.default');
+    }
+
+    /**
      * Run $callback while holding a short, non-blocking lock on the
      * buffer key so concurrent worker processes on the same host cannot
      * lose each other's writes to a shared read-modify-write race.

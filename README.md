@@ -196,6 +196,45 @@ Configure allowed queues for security:
 
 When enabled, you can click "Retry" on any failed job in your Queuewatch dashboard, and it will be re-dispatched to your Laravel application.
 
+## Worker Monitoring
+
+Report queue worker lifecycle (start, heartbeat, stop) to Queuewatch so you can see which workers are running, when they last checked in, and why they stopped. This is opt-in: it is disabled by default, so upgrading this package introduces no new behaviour until you turn it on.
+
+```env
+QUEUEWATCH_WORKERS_ENABLED=true
+QUEUEWATCH_API_KEY=qw_live_xxxxxxxxxxxxxxxxxxxx
+```
+
+Both variables are required — worker monitoring stays off if either `QUEUEWATCH_WORKERS_ENABLED` is false or `QUEUEWATCH_API_KEY` is empty. You can also tune how often a running worker reports in:
+
+```env
+QUEUEWATCH_WORKER_HEARTBEAT_INTERVAL=15
+```
+
+### Scheduler
+
+Heartbeats are buffered locally by the worker process and flushed to Queuewatch by a scheduled command, so your app's scheduler must be running:
+
+```
+* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
+```
+
+The package registers `queuewatch:workers:flush` to run `everyMinute()` for you — you don't need to add it to your own schedule.
+
+### Cache store
+
+The heartbeat buffer is written by the worker process and read by the scheduled flush command, so it needs a cache store that is shared and persists between processes — Redis, Memcached, DynamoDB, or a database store all work. The `array` and `null` drivers do not survive between processes and will silently lose every heartbeat; if your default cache store can't be used for this, set a dedicated one:
+
+```env
+QUEUEWATCH_WORKER_CACHE_STORE=redis
+```
+
+If the configured store can't survive between processes, a warning is logged when the application boots.
+
+### Stop reasons
+
+Worker stop reporting works on Laravel 10 and up: a worker starting, looping, processing jobs, and stopping is reported on every supported version. Structured stop *reasons* (why a worker stopped — `--max-jobs`, `--memory`, an exception, etc.) require Laravel 13.30+, since that's when `WorkerStopping` started carrying that data. On earlier versions, a stop is still reported, just without a reason.
+
 ## Notifications
 
 Configure notifications in your [Queuewatch dashboard](https://queuewatch.io/dashboard/settings/notifications):
