@@ -6,7 +6,14 @@ use Composer\InstalledVersions;
 
 class Queuewatch
 {
-    public const VERSION = '1.0.0';
+    /**
+     * Fallback version reported when the real installed version cannot be
+     * resolved from Composer's runtime metadata. Deliberately not a real
+     * release number — a hardcoded version here would go stale at every
+     * release and silently corrupt the package_version signal QueueWatch
+     * stores for each worker run.
+     */
+    public const VERSION = 'unknown';
 
     public static function version(): string
     {
