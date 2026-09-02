@@ -7,13 +7,14 @@ use Queuewatch\Laravel\Workers\WorkerReporter;
 
 beforeEach(function () {
     Cache::flush();
-    Http::fake();
     config()->set('queuewatch.api_key', 'test-key');
     config()->set('queuewatch.endpoint', 'https://api.queuewatch.test');
     config()->set('queuewatch.workers.enabled', true);
 });
 
 it('flushes the buffer as one batch request', function () {
+    Http::fake();
+
     $reporter = app(WorkerReporter::class);
     $reporter->startRun('redis', 'default', null);
     $reporter->bufferHeartbeat(64);
@@ -27,6 +28,8 @@ it('flushes the buffer as one batch request', function () {
 });
 
 it('sends nothing when the buffer is empty', function () {
+    Http::fake();
+
     $this->artisan('queuewatch:workers:flush')->assertSuccessful();
 
     Http::assertNothingSent();
@@ -44,7 +47,20 @@ it('restores the buffer when the request fails so nothing is lost', function () 
     expect($reporter->takeBufferedHeartbeats())->toHaveCount(1);
 });
 
+it('restores the buffer when the api rejects the request so nothing is lost', function () {
+    Http::fake(['*' => Http::response(['error' => 'nope'], 500)]);
+
+    $reporter = app(WorkerReporter::class);
+    $reporter->startRun('redis', 'default', null);
+    $reporter->bufferHeartbeat(64);
+
+    $this->artisan('queuewatch:workers:flush')->assertSuccessful();
+
+    expect($reporter->takeBufferedHeartbeats())->toHaveCount(1);
+});
+
 it('does nothing when worker monitoring is disabled', function () {
+    Http::fake();
     config()->set('queuewatch.workers.enabled', false);
 
     $this->artisan('queuewatch:workers:flush')->assertSuccessful();
@@ -53,6 +69,8 @@ it('does nothing when worker monitoring is disabled', function () {
 });
 
 it('chunks a large buffer into batches of 500', function () {
+    Http::fake();
+
     $reporter = app(WorkerReporter::class);
 
     $buffer = collect(range(1, 1200))->mapWithKeys(fn ($i) => [

@@ -28,7 +28,13 @@ class FlushWorkerHeartbeatsCommand extends Command
 
         foreach (array_chunk($heartbeats, 500) as $chunk) {
             try {
-                $client->flushWorkerHeartbeats($chunk);
+                $response = $client->flushWorkerHeartbeats($chunk);
+
+                if ($response->failed()) {
+                    Log::debug('Queuewatch heartbeat flush rejected', ['status' => $response->status()]);
+
+                    $this->restore($reporter, $chunk);
+                }
             } catch (Throwable $e) {
                 Log::debug('Queuewatch heartbeat flush failed', ['error' => $e->getMessage()]);
 
