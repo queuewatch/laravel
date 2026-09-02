@@ -84,7 +84,7 @@ Official Laravel package for [Queuewatch](https://queuewatch.io) - Real-time que
 ## Requirements
 
 - PHP 8.1+
-- Laravel 10.x, 11.x, or 12.x
+- Laravel 10.x, 11.x, 12.x, or 13.x
 - A [Queuewatch](https://queuewatch.io) account
 
 ## Installation
@@ -235,7 +235,7 @@ If the configured store can't survive between processes, a warning is logged whe
 
 ### Stop reasons
 
-Given the Laravel 12.20+ floor above, worker start/heartbeat/stop reporting works on every version this package supports. Structured stop *reasons* (why a worker stopped — `--max-jobs`, `--memory`, an exception, etc.) additionally require Laravel 13.30+, since that's when `WorkerStopping` started carrying that data. Between 12.20 and 13.30, a stop is still reported, just without a reason.
+Worker start, heartbeat, and stop reporting all share the same Laravel 12.20+ floor described above — this is narrower than the ^10–^13 range this package otherwise supports. Structured stop *reasons* (why a worker stopped — `--max-jobs`, `--memory`, a restart signal, etc.) also work from that same 12.20 floor, since `WorkerStopReason` and `WorkerStopping::$reason` were both backported to Laravel 12.x. What actually requires Laravel 13.30+ is the richer `WorkerStopping` payload added in that release — `jobsProcessed`, `memoryUsage`, and `lastJobProcessedAt`. Between 12.20 and 13.30, a stop is still reported with its reason; jobs processed falls back to this package's own in-process count, and memory usage / last-job-processed-at are simply omitted.
 
 ## Notifications
 
