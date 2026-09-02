@@ -43,4 +43,4 @@ it('schedules the flush command every minute', function () {
         ->filter(fn ($event) => str_contains($event->command ?? '', 'queuewatch:workers:flush'));
 
     expect($events)->not->toBeEmpty();
-})->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
+})->skip(fn () => version_compare(app()->version(), '11.0', '<'), 'Laravel 10 rebinds the Schedule singleton after the provider\'s booted() callback runs');
