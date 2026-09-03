@@ -116,4 +116,4 @@ it('reports which kind of worker process this is', function (?string $command, s
     'queue:listen' => ['queue:listen', 'queue:listen'],
     'something else' => ['some:command', 'other'],
     'no argv at all' => [null, 'other'],
-]);
+])->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
