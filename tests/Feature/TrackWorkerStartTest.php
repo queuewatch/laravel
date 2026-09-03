@@ -90,3 +90,30 @@ it('clears the run when the registration request returns a server error', functi
 
     expect($reporter->runId())->toBeNull();
 })->skip(fn () => ! class_exists(WorkerStarting::class), 'Requires Laravel 12.20+');
+
+it('reports which kind of worker process this is', function (?string $command, string $expected) {
+    Http::fake();
+
+    $original = $_SERVER['argv'] ?? null;
+    $_SERVER['argv'] = $command === null ? ['artisan'] : ['artisan', $command];
+
+    try {
+        app(TrackWorkerLifecycle::class)->handleStarting(
+            new WorkerStarting('redis', 'default', new WorkerOptions)
+        );
+
+        Http::assertSent(fn ($request) => $request['worker_type'] === $expected);
+    } finally {
+        if ($original === null) {
+            unset($_SERVER['argv']);
+        } else {
+            $_SERVER['argv'] = $original;
+        }
+    }
+})->with([
+    'horizon' => ['horizon:work', 'horizon'],
+    'queue:work' => ['queue:work', 'queue:work'],
+    'queue:listen' => ['queue:listen', 'queue:listen'],
+    'something else' => ['some:command', 'other'],
+    'no argv at all' => [null, 'other'],
+]);

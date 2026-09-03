@@ -58,6 +58,7 @@ class TrackWorkerLifecycle
                         'max_tries' => $options->maxTries ?? null,
                         'backoff' => $options->backoff ?? null,
                     ],
+                    'worker_type' => $this->workerType(),
                     'heartbeat_interval' => (int) config('queuewatch.workers.heartbeat_interval', 15),
                     'laravel_version' => app()->version(),
                     'php_version' => PHP_VERSION,
@@ -191,6 +192,27 @@ class TrackWorkerLifecycle
      * monitoring is enabled, an api key is configured, and the host is
      * not currently backed off.
      */
+    /**
+     * Which kind of process is running this worker.
+     *
+     * Horizon manages its workers through `horizon:work`, supervisor and manual
+     * setups use `queue:work`, and `queue:listen` is a third shape entirely. The
+     * dashboard shows this so an operator can tell at a glance whether a pool is
+     * Horizon-managed — which matters, because Horizon never passes --name and
+     * restarts workers far more aggressively than supervisor does.
+     */
+    protected function workerType(): string
+    {
+        $command = $_SERVER['argv'][1] ?? null;
+
+        return match ($command) {
+            'horizon:work' => 'horizon',
+            'queue:work' => 'queue:work',
+            'queue:listen' => 'queue:listen',
+            default => 'other',
+        };
+    }
+
     protected function enabled(): bool
     {
         return $this->configuredToReport() && ! $this->reporter->isBackedOff();
