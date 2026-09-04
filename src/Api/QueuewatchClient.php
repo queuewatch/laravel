@@ -5,6 +5,7 @@ namespace Queuewatch\Laravel\Api;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Queuewatch\Laravel\Queuewatch;
 
 class QueuewatchClient
 {
@@ -41,6 +42,21 @@ class QueuewatchClient
         return $this->request()->get('/api/v1/project');
     }
 
+    public function startWorkerRun(array $payload): Response
+    {
+        return $this->request()->post('/api/v1/workers/runs', $payload);
+    }
+
+    public function stopWorkerRun(string $runId, array $payload): Response
+    {
+        return $this->request()->post("/api/v1/workers/runs/{$runId}/stop", $payload);
+    }
+
+    public function flushWorkerHeartbeats(array $heartbeats): Response
+    {
+        return $this->request()->post('/api/v1/workers/heartbeats', ['heartbeats' => $heartbeats]);
+    }
+
     protected function request(): PendingRequest
     {
         return Http::baseUrl($this->endpoint)
@@ -49,7 +65,7 @@ class QueuewatchClient
                 'Authorization' => 'Bearer '.$this->apiKey,
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
-                'X-Queuewatch-Agent' => 'queuewatch/laravel 1.0',
+                'X-Queuewatch-Agent' => 'queuewatch/laravel '.Queuewatch::version(),
             ]);
     }
 

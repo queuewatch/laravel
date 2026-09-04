@@ -84,7 +84,7 @@ Official Laravel package for [Queuewatch](https://queuewatch.io) - Real-time que
 ## Requirements
 
 - PHP 8.1+
-- Laravel 10.x, 11.x, or 12.x
+- Laravel 10.x, 11.x, 12.x, or 13.x
 - A [Queuewatch](https://queuewatch.io) account
 
 ## Installation
@@ -195,6 +195,47 @@ Configure allowed queues for security:
 ```
 
 When enabled, you can click "Retry" on any failed job in your Queuewatch dashboard, and it will be re-dispatched to your Laravel application.
+
+## Worker Monitoring
+
+Report queue worker lifecycle (start, heartbeat, stop) to Queuewatch so you can see which workers are running, when they last checked in, and why they stopped. This is opt-in: it is disabled by default, so upgrading this package introduces no new behaviour until you turn it on.
+
+**Requires Laravel 12.20 or newer.** `Illuminate\Queue\Events\WorkerStarting` — the event this feature relies on to detect a worker starting up — was not introduced until Laravel 12.20. On Laravel 10.x, 11.x, and 12.0-12.19, enabling worker monitoring reports nothing at all: no run is ever created, so every other lifecycle handler stays inert. A warning is logged when the application boots if you enable worker monitoring on an unsupported version.
+
+```env
+QUEUEWATCH_WORKERS_ENABLED=true
+QUEUEWATCH_API_KEY=qw_live_xxxxxxxxxxxxxxxxxxxx
+```
+
+Both variables are required — worker monitoring stays off if either `QUEUEWATCH_WORKERS_ENABLED` is false or `QUEUEWATCH_API_KEY` is empty. You can also tune how often a running worker reports in:
+
+```env
+QUEUEWATCH_WORKER_HEARTBEAT_INTERVAL=15
+```
+
+### Scheduler
+
+Heartbeats are buffered locally by the worker process and flushed to Queuewatch by a scheduled command, so your app's scheduler must be running:
+
+```
+* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
+```
+
+The package registers `queuewatch:workers:flush` to run `everyMinute()` for you — you don't need to add it to your own schedule.
+
+### Cache store
+
+The heartbeat buffer is written by the worker process and read by the scheduled flush command, so it needs a cache store that is shared and persists between processes — Redis, Memcached, DynamoDB, or a database store all work. The `array` and `null` drivers do not survive between processes and will silently lose every heartbeat; if your default cache store can't be used for this, set a dedicated one:
+
+```env
+QUEUEWATCH_WORKER_CACHE_STORE=redis
+```
+
+If the configured store can't survive between processes, a warning is logged when the application boots.
+
+### Stop reasons
+
+Worker start, heartbeat, and stop reporting all share the same Laravel 12.20+ floor described above — this is narrower than the ^10–^13 range this package otherwise supports. Structured stop *reasons* (why a worker stopped — `--max-jobs`, `--memory`, a restart signal, etc.) also work from that same 12.20 floor, since `WorkerStopReason` and `WorkerStopping::$reason` were both backported to Laravel 12.x. What actually requires Laravel 13.30+ is the richer `WorkerStopping` payload added in that release — `jobsProcessed`, `memoryUsage`, and `lastJobProcessedAt`. Between 12.20 and 13.30, a stop is still reported with its reason; jobs processed falls back to this package's own in-process count, and memory usage / last-job-processed-at are simply omitted.
 
 ## Notifications
 

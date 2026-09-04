@@ -226,4 +226,56 @@ return [
 
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Worker Monitoring
+    |--------------------------------------------------------------------------
+    |
+    | Configure worker monitoring, which reports queue worker lifecycle
+    | events (start, heartbeat, stop) to QueueWatch. This is disabled by
+    | default; enable it once you're ready to see workers in the dashboard.
+    |
+    */
+
+    'workers' => [
+
+        /*
+        |--------------------------------------------------------------------------
+        | Enable Worker Monitoring
+        |--------------------------------------------------------------------------
+        |
+        | Whether to report queue worker lifecycle events to QueueWatch.
+        | Disabled by default so upgrading this package introduces no new
+        | behaviour until you opt in.
+        |
+        */
+
+        'enabled' => env('QUEUEWATCH_WORKERS_ENABLED', false),
+
+        /*
+        |--------------------------------------------------------------------------
+        | Heartbeat Interval
+        |--------------------------------------------------------------------------
+        |
+        | How often, in seconds, a running worker should report a heartbeat
+        | to QueueWatch so it can be shown as alive in the dashboard.
+        |
+        */
+
+        'heartbeat_interval' => (int) env('QUEUEWATCH_WORKER_HEARTBEAT_INTERVAL', 15),
+
+        /*
+        |--------------------------------------------------------------------------
+        | Cache Store
+        |--------------------------------------------------------------------------
+        |
+        | The cache store used to track worker state between heartbeats.
+        | Leave null to use the application's default cache store.
+        |
+        */
+
+        'cache_store' => env('QUEUEWATCH_WORKER_CACHE_STORE'),
+
+    ],
+
 ];
