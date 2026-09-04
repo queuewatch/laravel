@@ -23,6 +23,13 @@ All notable changes to `laravel-enhanced-failed-jobs` will be documented in this
   event does not exist before that release. On Laravel 10 and 11 every listener
   is guarded, so the package installs and behaves exactly as it did before —
   it simply reports no worker activity.
+- Stop **reasons** need **Laravel 12.59.0 or newer**, where `WorkerStopReason`
+  and `WorkerStopping::$reason` were backported — not the 12.20 floor. Between
+  12.20 and 12.58 a stop is recorded without a reason.
+- `jobsProcessed`, `memoryUsage` and `lastJobProcessedAt` on `WorkerStopping`
+  need **13.30+**. Below that, jobs processed falls back to this package's own
+  count and the other two are omitted. Every field is read through
+  `property_exists()`, so no worker fails on an older release.
 - Heartbeats need a shared, persistent cache store. With `array` or another
   per-process driver they are written and immediately lost; the package logs a
   warning at boot when it detects one.

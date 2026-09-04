@@ -235,7 +235,21 @@ If the configured store can't survive between processes, a warning is logged whe
 
 ### Stop reasons
 
-Worker start, heartbeat, and stop reporting all share the same Laravel 12.20+ floor described above — this is narrower than the ^10–^13 range this package otherwise supports. Structured stop *reasons* (why a worker stopped — `--max-jobs`, `--memory`, a restart signal, etc.) also work from that same 12.20 floor, since `WorkerStopReason` and `WorkerStopping::$reason` were both backported to Laravel 12.x. What actually requires Laravel 13.30+ is the richer `WorkerStopping` payload added in that release — `jobsProcessed`, `memoryUsage`, and `lastJobProcessedAt`. Between 12.20 and 13.30, a stop is still reported with its reason; jobs processed falls back to this package's own in-process count, and memory usage / last-job-processed-at are simply omitted.
+Worker start, heartbeat, and stop reporting all share the same Laravel 12.20+ floor described above — narrower than the ^10–^13 range this package otherwise supports. Beyond that floor the queue worker API gained capabilities in two further steps, so what you get depends on your exact Laravel version:
+
+| | 12.20 – 12.58 | 12.59 – 13.29 | 13.30+ |
+|---|---|---|---|
+| Worker runs, heartbeats, liveness | yes | yes | yes |
+| Stop **reason** (`WorkerStopReason`) | no | yes | yes |
+| `jobsProcessed`, `memoryUsage`, `lastJobProcessedAt` | no | no | yes |
+
+`WorkerStopReason` and `WorkerStopping::$reason` were backported to Laravel **12.59.0** (released 2026-05-14), not at the 12.20 floor. Below that a stop is still recorded — you see that the worker exited and when — but the reason is null.
+
+The richer `WorkerStopping` payload arrived in **13.30**. Between 12.59 and 13.30 a stop is reported with its reason, jobs processed falls back to this package's own in-process count, and memory usage and last-job-processed-at are omitted.
+
+Every one of these fields is read through `property_exists()`, so a worker never fails because its Laravel version predates a field.
+
+Note that `WorkerStopReason::description()` exists **only** in 13.30+ — the 12.x backport ships the enum without it. This package therefore never calls it; the human-readable descriptions are derived by QueueWatch from the reason value instead, which is what lets a single package version serve every release above the floor.
 
 ## Notifications
 
