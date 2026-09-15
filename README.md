@@ -170,7 +170,7 @@ return [
 php artisan queuewatch:test
 ```
 
-This verifies your API key and connection. Add `--send-test` to send a test failure:
+This prints your configuration and checks that the Queuewatch API is reachable. It does **not** check that your API key is valid — the connection check passes even with a wrong key. Add `--send-test` to send a test failure, which only reaches your dashboard if the key is accepted:
 
 ```bash
 php artisan queuewatch:test --send-test
