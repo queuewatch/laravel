@@ -2,7 +2,7 @@
 
 All notable changes to `laravel-enhanced-failed-jobs` will be documented in this file.
 
-## Unreleased
+## 1.3.1 - 2026-09-15
 
 ### Fixed
 
@@ -13,6 +13,13 @@ All notable changes to `laravel-enhanced-failed-jobs` will be documented in this
   the key check, the key is reported as unverified rather than failed.
 - `queuewatch:test --send-test` exits with status 1 when the test failure
   report is rejected, instead of printing the error and exiting 0.
+
+### Documentation
+
+- The README now covers the full remote retry setup, including the Retry
+  Webhook URL and how retry requests are signed; lists PHP 8.2 as the
+  minimum; documents every environment variable; notes that Horizon does not
+  run the scheduler; and pins stop reasons to Laravel 12.59.
 
 ## 1.3.0 - 2026-09-04
 
