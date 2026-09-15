@@ -76,6 +76,7 @@ Official Laravel package for [Queuewatch](https://queuewatch.io) - Real-time que
 - **Real-time Failure Reporting** - Automatically capture and report queue job failures to your Queuewatch dashboard
 - **Rich Exception Data** - Full stack traces, job payloads, and server context
 - **Smart Filtering** - Ignore specific jobs, queues, or exception types
+- **Worker Monitoring** - See which queue workers are running, when they last checked in, and why they stopped (Laravel 12.20+)
 - **Remote Retry** - Retry failed jobs directly from the Queuewatch dashboard
 - **Instant Notifications** - Get notified via Slack, Discord, email, or webhooks when jobs fail
 
@@ -83,7 +84,7 @@ Official Laravel package for [Queuewatch](https://queuewatch.io) - Real-time que
 
 ## Requirements
 
-- PHP 8.1+
+- PHP 8.2+
 - Laravel 10.x, 11.x, 12.x, or 13.x
 - A [Queuewatch](https://queuewatch.io) account
 
@@ -96,7 +97,7 @@ composer require queuewatch/laravel
 Add your API key to `.env`:
 
 ```env
-QUEUEWATCH_API_KEY=qw_live_xxxxxxxxxxxxxxxxxxxx
+QUEUEWATCH_API_KEY=your-project-api-key
 ```
 
 That's it! The package automatically hooks into Laravel's queue system and starts reporting failures.
@@ -105,7 +106,7 @@ That's it! The package automatically hooks into Laravel's queue system and start
 
 1. Sign up at [queuewatch.io](https://queuewatch.io)
 2. Create a new project in your dashboard
-3. Copy the API key from **Settings → API Keys**
+3. Open the project and copy the key from its **API Key** card
 4. Add it to your `.env` file
 
 ## Configuration
@@ -152,6 +153,16 @@ return [
 | `QUEUEWATCH_PROJECT` | Project name in dashboard | `APP_NAME` |
 | `QUEUEWATCH_ENVIRONMENT` | Environment label (production, staging, etc.) | `APP_ENV` |
 | `QUEUEWATCH_RETRY_ENABLED` | Enable remote retry feature | `false` |
+| `QUEUEWATCH_RETRY_PATH` | Path of the retry endpoint | `queuewatch/retry` |
+| `QUEUEWATCH_RETRY_DELAY` | Seconds to delay a retried job | `0` |
+| `QUEUEWATCH_COLLECT_JOB_DATA` | Include the job payload in failure reports | `true` |
+| `QUEUEWATCH_QUEUE` | Queue used to send reports | `default` |
+| `QUEUEWATCH_QUEUE_CONNECTION` | Queue connection used to send reports | default connection |
+| `QUEUEWATCH_TIMEOUT` | API request timeout, in seconds | `5` |
+| `QUEUEWATCH_ENDPOINT` | API endpoint — only change for a self-hosted instance | `https://api.queuewatch.io` |
+| `QUEUEWATCH_WORKERS_ENABLED` | Enable worker monitoring | `false` |
+| `QUEUEWATCH_WORKER_HEARTBEAT_INTERVAL` | Seconds between worker heartbeats | `15` |
+| `QUEUEWATCH_WORKER_CACHE_STORE` | Cache store for the heartbeat buffer | default store |
 
 ## Testing Your Integration
 
@@ -179,22 +190,43 @@ When a job fails, Queuewatch captures:
 
 ## Remote Retry
 
-Enable remote retry to retry failed jobs directly from the Queuewatch dashboard:
+Retry a failed job straight from the Queuewatch dashboard. Available on the Pro plan and above.
 
-```env
-QUEUEWATCH_RETRY_ENABLED=true
-```
+1. Enable the retry endpoint in your application:
 
-Configure allowed queues for security:
+   ```env
+   QUEUEWATCH_RETRY_ENABLED=true
+   ```
+
+   This registers a `POST` route at `/queuewatch/retry` (change the path with `QUEUEWATCH_RETRY_PATH`).
+
+2. In the Queuewatch dashboard, edit your project and set **Retry Webhook URL** to that route's full address, for example `https://your-app.com/queuewatch/retry`. The Retry button does not appear until this is set.
+
+**Only failures reported after you enable retry can be retried.** Rebuilding a job needs its serialized command, and the package only includes it in failure reports while `QUEUEWATCH_RETRY_ENABLED` is `true`. Failures captured before then show a note in the dashboard instead of a Retry button.
+
+### How retry requests are verified
+
+Each retry request is signed with your project's API key: the `X-Queuewatch-Signature` header carries an HMAC-SHA256 of the JSON payload. The package checks it against `QUEUEWATCH_API_KEY` and rejects a mismatch with a `401`. There is no separate retry secret, so protect the API key accordingly — and if you regenerate it, update your `.env`, or retries will be rejected.
+
+### Options
 
 ```php
 'retry' => [
     'enabled' => env('QUEUEWATCH_RETRY_ENABLED', false),
-    'allowed_queues' => ['payments', 'emails'], // or ['*'] for all
+    'path' => env('QUEUEWATCH_RETRY_PATH', 'queuewatch/retry'),
+
+    // Extra middleware for the retry route
+    'middleware' => [],
+
+    // Queues that may be retried; a request for any other queue gets a 403
+    'allowed_queues' => ['*'],
+
+    // Seconds to delay the re-dispatched job
+    'delay' => env('QUEUEWATCH_RETRY_DELAY', 0),
 ],
 ```
 
-When enabled, you can click "Retry" on any failed job in your Queuewatch dashboard, and it will be re-dispatched to your Laravel application.
+The job is re-dispatched to the connection and queue it originally failed on.
 
 ## Worker Monitoring
 
@@ -204,7 +236,7 @@ Report queue worker lifecycle (start, heartbeat, stop) to Queuewatch so you can 
 
 ```env
 QUEUEWATCH_WORKERS_ENABLED=true
-QUEUEWATCH_API_KEY=qw_live_xxxxxxxxxxxxxxxxxxxx
+QUEUEWATCH_API_KEY=your-project-api-key
 ```
 
 Both variables are required — worker monitoring stays off if either `QUEUEWATCH_WORKERS_ENABLED` is false or `QUEUEWATCH_API_KEY` is empty. You can also tune how often a running worker reports in:
@@ -215,7 +247,7 @@ QUEUEWATCH_WORKER_HEARTBEAT_INTERVAL=15
 
 ### Scheduler
 
-Heartbeats are buffered locally by the worker process and flushed to Queuewatch by a scheduled command, so your app's scheduler must be running:
+Heartbeats are buffered locally by the worker process and flushed to Queuewatch by a scheduled command, so your app's scheduler must be running. **This applies to Horizon too** — Horizon runs your queue workers, but not the scheduler, so it still needs its own cron entry (or `php artisan schedule:work`):
 
 ```
 * * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
