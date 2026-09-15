@@ -2,6 +2,18 @@
 
 All notable changes to `laravel-enhanced-failed-jobs` will be documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- `queuewatch:test` now confirms the API key is accepted. It used to check
+  only that the API was reachable, through an endpoint that does not
+  authenticate, so it reported a successful connection for a wrong key. A
+  rejected key now exits with status 1. Against a Queuewatch server without
+  the key check, the key is reported as unverified rather than failed.
+- `queuewatch:test --send-test` exits with status 1 when the test failure
+  report is rejected, instead of printing the error and exiting 0.
+
 ## 1.3.0 - 2026-09-04
 
 ### Added

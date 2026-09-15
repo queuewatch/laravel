@@ -59,9 +59,22 @@ class QueuewatchTestCommand extends Command
             return 1;
         }
 
+        $this->newLine();
+
+        if (! $this->verifyApiKey($client)) {
+            $this->newLine();
+
+            return 1;
+        }
+
         if ($this->option('send-test')) {
             $this->newLine();
-            $this->sendTestFailure($client);
+
+            if (! $this->sendTestFailure($client)) {
+                $this->newLine();
+
+                return 1;
+            }
         }
 
         $this->newLine();
@@ -86,7 +99,56 @@ class QueuewatchTestCommand extends Command
         $this->newLine();
     }
 
-    protected function sendTestFailure(QueuewatchClient $client): void
+    /**
+     * Confirm the API key is accepted, not just that the API is reachable.
+     *
+     * The ping endpoint does not authenticate, so on its own it reports
+     * success for a wrong key. /api/v1/project requires a valid key for an
+     * active project. Queuewatch servers that predate that endpoint answer
+     * 404, which is reported as unverified rather than failed so the command
+     * keeps working against them.
+     */
+    protected function verifyApiKey(QueuewatchClient $client): bool
+    {
+        try {
+            $response = $client->getProject();
+        } catch (\Throwable $e) {
+            $this->line('  <fg=red>✗</> Could not verify the API key');
+            $this->line("  <fg=gray>Error: {$e->getMessage()}</>");
+
+            return false;
+        }
+
+        if ($response->successful()) {
+            $name = $response->json('project.name');
+
+            $this->line('  <fg=green>✓</> API key accepted'.($name ? " for project {$name}" : ''));
+
+            return true;
+        }
+
+        if (in_array($response->status(), [401, 403], true)) {
+            $this->line('  <fg=red>✗</> API key rejected');
+            $this->line("  <fg=gray>Check that QUEUEWATCH_API_KEY matches the key on your project's API Key card, and that the project is active.</>");
+
+            return false;
+        }
+
+        if ($response->status() === 404) {
+            $this->line('  <fg=yellow>!</> Could not verify the API key: this Queuewatch server does not support key checks.');
+            $this->line('  <fg=gray>Run with --send-test to confirm the key is accepted.</>');
+
+            return true;
+        }
+
+        $this->line('  <fg=red>✗</> Could not verify the API key');
+        $this->line("  <fg=gray>Status: {$response->status()}</>");
+        $this->line("  <fg=gray>Response: {$response->body()}</>");
+
+        return false;
+    }
+
+    protected function sendTestFailure(QueuewatchClient $client): bool
     {
         $this->info('  Sending test failure report...');
 
@@ -127,14 +189,18 @@ class QueuewatchTestCommand extends Command
             if ($response->successful()) {
                 $this->line('  <fg=green>✓</> Test failure report sent successfully!');
                 $this->line('  <fg=gray>Check your Queuewatch dashboard to see the test failure.</>');
-            } else {
-                $this->line('  <fg=red>✗</> Failed to send test report');
-                $this->line("  <fg=gray>Status: {$response->status()}</>");
-                $this->line("  <fg=gray>Response: {$response->body()}</>");
+
+                return true;
             }
+
+            $this->line('  <fg=red>✗</> Failed to send test report');
+            $this->line("  <fg=gray>Status: {$response->status()}</>");
+            $this->line("  <fg=gray>Response: {$response->body()}</>");
         } catch (\Throwable $e) {
             $this->line('  <fg=red>✗</> Failed to send test report');
             $this->line("  <fg=gray>Error: {$e->getMessage()}</>");
         }
+
+        return false;
     }
 }

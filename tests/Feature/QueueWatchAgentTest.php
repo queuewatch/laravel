@@ -118,6 +118,7 @@ describe('Queuewatch Test Command', function () {
     it('sends test failure when requested', function () {
         Http::fake([
             '*/ping' => Http::response(['message' => 'pong'], 200),
+            '*/project' => Http::response(['success' => true, 'project' => ['name' => 'Test Project']], 200),
             '*/failures' => Http::response(['success' => true], 200),
         ]);
 
@@ -143,5 +144,81 @@ describe('Config', function () {
         expect(config('queuewatch.timeout'))->not->toBeNull();
         expect(config('queuewatch.queue'))->not->toBeNull();
         expect(config('queuewatch.collect_job_data'))->not->toBeNull();
+    });
+});
+
+describe('Queuewatch Test Command key check', function () {
+    it('confirms an accepted api key and names the project', function () {
+        Http::fake([
+            '*/ping' => Http::response(['message' => 'pong'], 200),
+            '*/project' => Http::response(['success' => true, 'project' => ['name' => 'Leadsprout']], 200),
+        ]);
+
+        $this->artisan('queuewatch:test')
+            // One substring, not two: both appear on the same output line, and
+            // the console mock lets a line satisfy only a single expectation.
+            ->expectsOutputToContain('API key accepted for project Leadsprout')
+            ->assertExitCode(0);
+    });
+
+    it('fails when the api key is rejected', function () {
+        // The ping endpoint does not authenticate, so a wrong key used to
+        // report "Connection successful!" and exit 0.
+        Http::fake([
+            '*/ping' => Http::response(['message' => 'pong'], 200),
+            '*/project' => Http::response(['message' => 'This action is unauthorized.'], 403),
+        ]);
+
+        $this->artisan('queuewatch:test')
+            ->expectsOutputToContain('API key rejected')
+            ->assertExitCode(1);
+    });
+
+    it('warns but passes against a server that cannot check keys yet', function () {
+        Http::fake([
+            '*/ping' => Http::response(['message' => 'pong'], 200),
+            '*/project' => Http::response([], 404),
+        ]);
+
+        $this->artisan('queuewatch:test')
+            ->expectsOutputToContain('Could not verify the API key')
+            ->assertExitCode(0);
+    });
+
+    it('fails when the key check errors', function () {
+        Http::fake([
+            '*/ping' => Http::response(['message' => 'pong'], 200),
+            '*/project' => Http::response([], 500),
+        ]);
+
+        $this->artisan('queuewatch:test')
+            ->expectsOutputToContain('Could not verify the API key')
+            ->assertExitCode(1);
+    });
+
+    it('does not send a test failure once the key is rejected', function () {
+        Http::fake([
+            '*/ping' => Http::response(['message' => 'pong'], 200),
+            '*/project' => Http::response([], 403),
+            '*/failures' => Http::response(['success' => true], 201),
+        ]);
+
+        $this->artisan('queuewatch:test --send-test')->assertExitCode(1);
+
+        Http::assertNotSent(fn (Request $request) => str_contains($request->url(), '/api/v1/failures'));
+    });
+
+    it('fails when the test failure report is rejected', function () {
+        // --send-test used to print the failure and still exit 0, so CI could
+        // not rely on it either.
+        Http::fake([
+            '*/ping' => Http::response(['message' => 'pong'], 200),
+            '*/project' => Http::response([], 404),
+            '*/failures' => Http::response(['message' => 'Monthly failure limit reached'], 429),
+        ]);
+
+        $this->artisan('queuewatch:test --send-test')
+            ->expectsOutputToContain('Failed to send test report')
+            ->assertExitCode(1);
     });
 });
